@@ -16,6 +16,11 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os, io, re
 import numpy as np
+import urllib3
+
+# El servidor de la CAIB usa un certificat SSL de CA corporativa
+# que Ubuntu (GitHub Actions) no te a la llista de confiança estandard.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── Configuració ─────────────────────────────────────────────────────────────
 ESTACIO_ID    = "117202"
@@ -52,7 +57,7 @@ SENSORS = {
 def prova_csv_directe(s: requests.Session) -> pd.DataFrame | None:
     for url in ENDPOINTS_CSV:
         try:
-            r = s.get(url, headers=HEADERS, timeout=15)
+            r = s.get(url, headers=HEADERS, timeout=15, verify=False)
             if r.status_code == 200 and len(r.text) > 100 and (";" in r.text[:300] or "," in r.text[:300]):
                 sep = ";" if r.text.count(";") > r.text.count(",") else ","
                 df = pd.read_csv(io.StringIO(r.text), sep=sep)
@@ -75,7 +80,7 @@ def scraping_sensor(s: requests.Session, nom: str, info: dict) -> pd.DataFrame |
     ]:
         url = URL_FORM if metode == "POST" or "params" in kwargs else f"{URL_FORM}/{ESTACIO_ID}/{info['sensor_id']}"
         try:
-            r = s.request(metode, url, headers=HEADERS, timeout=20, **kwargs)
+            r = s.request(metode, url, headers=HEADERS, timeout=20, verify=False, **kwargs)
             if r.status_code != 200:
                 continue
             html = r.text
@@ -214,7 +219,7 @@ def main():
     s = requests.Session()
     # Visita prèvia per obtenir cookies
     try:
-        s.get(f"{BASE_URL}/weatherstationdataview/{ESTACIO_ID}", headers=HEADERS, timeout=15)
+        s.get(f"{BASE_URL}/weatherstationdataview/{ESTACIO_ID}", headers=HEADERS, timeout=15, verify=False)
     except Exception:
         pass
 
