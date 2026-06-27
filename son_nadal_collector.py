@@ -88,51 +88,38 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
     return df_net.dropna(subset=["timestamp"])
 
 
-def resample_30min(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Redueix les dades a intervals de 30 minuts.
-    Temperatura i humitat: mitjana del període.
-    Pluja: suma acumulada del període.
-    """
-    df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
-    df = df.dropna(subset=["ts"]).set_index("ts").drop(columns=["timestamp"])
-
-    cols_suma  = [c for c in df.columns if any(k in c for k in ["precipitacio", "pluja", "rain"])]
-    cols_mitja = [c for c in df.columns if c not in cols_suma]
-
-    parts = []
-    if cols_mitja:
-        parts.append(df[cols_mitja].resample("30min").mean())
-    if cols_suma:
-        parts.append(df[cols_suma].resample("30min").sum())
-
-    df_res = pd.concat(parts, axis=1) if parts else df.resample("30min").mean()
-    df_res = df_res.dropna(how="all").reset_index()
-    df_res["timestamp"] = df_res["ts"].dt.strftime("%d/%m/%Y %H:%M")
-    df_res = df_res.drop(columns=["ts"])
-
-    print(f"  → Resample 30 min: {len(df_res)} registres (de les dades originals)")
-    return df_res
-
-
 def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
-    """Descarrega els tres sensors, els combina i fa resample a 30 min."""
-    dfs = {}
+    """
+    Descarrega els tres sensors, fa resample a 30 min per separat
+    (cada sensor pot tenir timestamps lleugerament diferents)
+    i els combina per timestamp normalitzat.
+    """
+    dfs_resampled = {}
     for nom, url in URLS.items():
         df = descarregar_sensor(sessio, nom, url)
-        if df is not None:
-            dfs[nom] = df
+        if df is None:
+            continue
 
-    if not dfs:
+        # Resample individual per aquest sensor
+        df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
+        df = df.dropna(subset=["ts"]).set_index("ts")[[nom]]
+
+        es_pluja = any(k in nom for k in ["precipitacio", "pluja", "rain"])
+        df_res = df.resample("30min").sum() if es_pluja else df.resample("30min").mean()
+        df_res = df_res.dropna()
+        dfs_resampled[nom] = df_res
+        print(f"  → {nom}: {len(df_res)} intervals de 30 min")
+
+    if not dfs_resampled:
         return None
 
-    df_final = None
-    for df in dfs.values():
-        df_final = df if df_final is None else pd.merge(df_final, df, on="timestamp", how="outer")
-
+    # Combina per índex temporal (ara sí que coincideixen exactament)
+    df_final = pd.concat(dfs_resampled.values(), axis=1).reset_index()
+    df_final["timestamp"] = df_final["ts"].dt.strftime("%d/%m/%Y %H:%M")
+    df_final = df_final.drop(columns=["ts"])
     df_final = df_final.sort_values("timestamp").reset_index(drop=True)
-    df_final = resample_30min(df_final)
 
+    print(f"  → Total combinat: {len(df_final)} registres")
     return df_final
 
 
