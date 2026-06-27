@@ -1,31 +1,36 @@
 """
 Col·lector diari - Estació Son Nadal (Felanitx, CAIB)
 ======================================================
-Descarrega les últimes 24h de temperatura, humitat i pluja
-des dels endpoints CSV oficials de la web, calcula el risc
-d'oïdi i afegeix les dades a data/historial.csv.
+Les dades reals estan incrustades a l'HTML de la pàgina de la gràfica
+com a JSON de Google Charts. Llegim directament d'aquí, ignorant el
+botó CSV que té un bug al servidor.
 
-Execució:
-  python son_nadal_collector.py
+URL de cada sensor:
+  https://www.estacionsclimatiquesiibb.cat/weatherstationlast24chart/117202/temperature/
+  https://www.estacionsclimatiquesiibb.cat/weatherstationlast24chart/117202/humidity/
+  https://www.estacionsclimatiquesiibb.cat/weatherstationlast24chart/117202/rain/
 """
 
 import requests
+from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
-from datetime import datetime
-import os, io
+from datetime import datetime, timedelta
+import os, re, json
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# ── Endpoints CSV confirmats ──────────────────────────────────────────────────
-URLS = {
-    "temperatura_c":   "https://www.estacionsclimatiquesiibb.cat/weatherstationlast24chart/117202/temperature/exportcsv",
-    "humitat_pct":     "https://www.estacionsclimatiquesiibb.cat/weatherstationlast24chart/117202/humidity/exportcsv",
-    "precipitacio_mm": "https://www.estacionsclimatiquesiibb.cat/weatherstationlast24chart/117202/rain/exportcsv",
-}
-
+# ── Configuració ──────────────────────────────────────────────────────────────
+BASE_URL     = "https://www.estacionsclimatiquesiibb.cat"
+ESTACIO_ID   = "117202"
 CSV_HISTORIAL = "data/historial.csv"
+
+SENSORS = {
+    "temperatura_c":   "temperature",
+    "humitat_pct":     "humidity",
+    "precipitacio_mm": "rain",
+}
 
 HEADERS = {
     "User-Agent": (
@@ -34,162 +39,131 @@ HEADERS = {
         "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "ca-ES,ca;q=0.9,es;q=0.8",
-    "Referer": "https://www.estacionsclimatiquesiibb.cat/weatherstationdataview/117202",
 }
 
 
-# ── Descàrrega ────────────────────────────────────────────────────────────────
-def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataFrame | None:
+# ── Descàrrega i parsejat ─────────────────────────────────────────────────────
+def descarregar_sensor(nom: str, sensor: str) -> pd.DataFrame | None:
     """
-    Descarrega el CSV d'un sensor.
-    La web requereix primer un POST a la URL base del sensor (sense /exportcsv)
-    per establir la sessió/cookie, i després un GET del CSV.
+    Descarrega la pàgina HTML del sensor i extreu el JSON de Google Charts
+    que conté les dades reals (jsonDataWeatherStationLast24Chart).
     """
-    # URL base del sensor (sense /exportcsv)
-    url_base = url.replace("/exportcsv", "")
+    # Primer POST al formulari per establir el sensor actiu
+    url_form = f"{BASE_URL}/weatherstationlast24hformview/form"
+    url_chart = f"{BASE_URL}/weatherstationlast24chart/{ESTACIO_ID}/{sensor}/"
 
+    s = requests.Session()
     try:
-        # Pas 1: POST per establir la sessió (igual que fa el formulari web)
-        r_post = sessio.post(
-            url_base,
-            headers={**HEADERS, "Content-Type": "application/x-www-form-urlencoded"},
-            verify=False, timeout=20, allow_redirects=True
-        )
-        print(f"  POST {nom}: {r_post.status_code} | URL final: {r_post.url}")
-
-        # Pas 2: GET del CSV amb la sessió activa
-        r = sessio.get(
-            url,
-            headers={**HEADERS, "Referer": r_post.url},
+        # POST al formulari (simula seleccionar estació + sensor + Enviar)
+        s.post(
+            url_form,
+            data={"weatherstation_id": ESTACIO_ID, "sensor": sensor},
+            headers={**HEADERS, "Referer": f"{BASE_URL}/weatherstationlast24hformview/form"},
             verify=False, timeout=20
         )
+        # GET de la pàgina de la gràfica
+        r = s.get(url_chart, headers={**HEADERS, "Referer": url_form},
+                  verify=False, timeout=20)
         r.raise_for_status()
     except requests.RequestException as e:
-        print(f"  ✗ {nom}: error de connexió — {e}")
+        print(f"  ✗ {nom}: error connexió — {e}")
         return None
 
-    text = r.text.strip()
-    if not text:
-        print(f"  ✗ {nom}: resposta buida")
+    # Extreu el JSON de Google Charts de l'HTML
+    match = re.search(
+        r'var\s+jsonDataWeatherStationLast24Chart\s*=\s*(\{.*?\})\s*\n',
+        r.text, re.DOTALL
+    )
+    if not match:
+        print(f"  ✗ {nom}: no s'ha trobat jsonDataWeatherStationLast24Chart a l'HTML")
+        print(f"     Comprova que la URL retorna la gràfica: {url_chart}")
         return None
-
-    # Log del text raw per diagnosticar separadors i estructura
-    print(f"     Raw (primers 150 cars): {repr(text[:150])}")
-
-    # Detecta separador (punt i coma o coma)
-    sep = ";" if text.count(";") > text.count(",") else ","
-    print(f"     Separador detectat: '{sep}'")
 
     try:
-        df = pd.read_csv(io.StringIO(text), sep=sep)
-    except Exception as e:
-        print(f"  ✗ {nom}: no s'ha pogut llegir el CSV — {e}")
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError as e:
+        print(f"  ✗ {nom}: error parsejant JSON — {e}")
         return None
 
-    print(f"  ✓ {nom}: {len(df)} files | columnes: {list(df.columns)}")
-    print(f"     Primeres 2 files:\n{df.head(2).to_string()}")
+    # Converteix les files del JSON a DataFrame
+    # Format: {"rows": [{"c": [{"v": "13:33"}, {"v": 39.2}]}, ...]}
+    files = []
+    for row in data.get("rows", []):
+        try:
+            hora  = row["c"][0]["v"]   # ex: "13:33"
+            valor = row["c"][1]["v"]   # ex: 39.2
+            files.append({"hora": hora, nom: float(valor)})
+        except (KeyError, TypeError, ValueError):
+            pass
 
-    # Estructura real del CSV de la CAIB:
-    # Codi | Nom | Data i Hora | Valor
-    # La columna de valor és sempre l'última (índex -1),
-    # la de temps és la tercera (índex 2)
-    if df.shape[1] < 4:
-        print(f"  ✗ {nom}: s'esperaven ≥4 columnes, hi ha {df.shape[1]}")
+    if not files:
+        print(f"  ✗ {nom}: JSON buit o format inesperat")
         return None
 
-    col_temps = df.columns[2]
-    col_valor = df.columns[-1]  # sempre l'última, independentment del nom
-
-    print(f"     Usant: temps='{col_temps}' | valor='{col_valor}'")
-
-    serie_valor = df[col_valor].astype(str).str.strip().str.replace(",", ".", regex=False)
-    print(f"     Primers valors raw: {serie_valor.head(3).tolist()}")
-
-    df_net = pd.DataFrame({
-        "timestamp": df[col_temps].astype(str).str.strip(),
-        nom:         pd.to_numeric(serie_valor, errors="coerce"),
-    })
-    nans = df_net[nom].isna().sum()
-    if nans > 0:
-        print(f"     ⚠ {nans} valors no numèrics ignorats")
-    return df_net.dropna(subset=["timestamp"])
+    df = pd.DataFrame(files)
+    print(f"  ✓ {nom}: {len(df)} mesures")
+    return df
 
 
-def filtrar_ultimes_24h(df: pd.DataFrame, col_ts: str = "ts") -> pd.DataFrame:
-    """Filtra per quedar-nos només amb les dades de les últimes 24h reals."""
-    ara = pd.Timestamp.now()
-    limit = ara - pd.Timedelta(hours=24)
-    df_fil = df[df[col_ts] >= limit].copy()
-    eliminats = len(df) - len(df_fil)
-    if eliminats > 0:
-        print(f"     ⚠ {eliminats} files fora de les últimes 24h eliminades")
-    return df_fil
-
-
-def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
+# ── Construcció del DataFrame combinat ───────────────────────────────────────
+def obtenir_dades() -> pd.DataFrame | None:
     """
-    Descarrega els tres sensors, filtra per les últimes 24h reals,
-    arrodoneix a intervals de 30 min i combina per merge inner.
-    Cada sensor usa la seva pròpia sessió per evitar interferències.
+    Descarrega els tres sensors, assigna timestamps complets
+    (les hores del JSON no tenen data), arrodoneix a 30 min i combina.
     """
-    dfs_nets = {}
-    for nom, url in URLS.items():
-        # Sessió nova per a cada sensor: evita que el POST d'un
-        # sensor sobreescrigui la sessió dels altres
-        sessio_sensor = requests.Session()
-        df = descarregar_sensor(sessio_sensor, nom, url)
+    ara = datetime.now()
+    ahir = ara - timedelta(hours=24)
+
+    dfs = {}
+    for nom, sensor in SENSORS.items():
+        df = descarregar_sensor(nom, sensor)
         if df is None:
             continue
 
-        # Converteix timestamp a datetime
-        df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
+        # Assigna la data correcta a cada hora
+        # Hores > hora actual → són d'ahir; hores <= hora actual → avui
+        def hora_a_ts(hora_str):
+            try:
+                h, m = map(int, hora_str.split(":"))
+                # Si l'hora és posterior a ara → és d'ahir
+                ts_avui = ara.replace(hour=h, minute=m, second=0, microsecond=0)
+                ts_ahir = ahir.replace(hour=h, minute=m, second=0, microsecond=0)
+                return ts_ahir if ts_avui > ara else ts_avui
+            except Exception:
+                return None
+
+        df["ts"] = df["hora"].apply(hora_a_ts)
         df = df.dropna(subset=["ts"])
 
-        # FILTRE CLAU: només dades de les últimes 24h reals
-        df = filtrar_ultimes_24h(df)
-        if df.empty:
-            print(f"  ✗ {nom}: cap dada dins les últimes 24h")
-            continue
-
-        df = df.dropna(subset=[nom])
-
-        # Arrodoneix al interval de 30 min més proper
+        # Arrodoneix a 30 min
         df["ts30"] = df["ts"].dt.round("30min")
 
-        # Agrupa: mitjana per T i HR, suma per pluja
-        es_pluja = any(k in nom for k in ["precipitacio", "pluja", "rain"])
+        # Agrupa: suma per pluja, mitjana per la resta
+        es_pluja = "precipitacio" in nom
         df_agr = df.groupby("ts30")[nom].sum() if es_pluja else df.groupby("ts30")[nom].mean()
         df_agr = df_agr.reset_index()
         df_agr["timestamp"] = df_agr["ts30"].dt.strftime("%d/%m/%Y %H:%M")
         df_agr = df_agr.drop(columns=["ts30"])
 
-        dfs_nets[nom] = df_agr
-        print(f"  → {nom}: {len(df_agr)} intervals de 30 min (últimes 24h)")
+        dfs[nom] = df_agr
+        print(f"     → {len(df_agr)} intervals de 30 min")
 
-    if not dfs_nets:
+    if not dfs:
         return None
 
-    # Merge inner: només files on coincideixen els tres sensors
+    # Merge inner per timestamp
     df_final = None
-    for df_s in dfs_nets.values():
+    for df_s in dfs.values():
         df_final = df_s if df_final is None else pd.merge(df_final, df_s, on="timestamp", how="inner")
 
     df_final = df_final.sort_values("timestamp").reset_index(drop=True)
-    print(f"  → Total combinat: {len(df_final)} registres")
+    print(f"\n  → Total: {len(df_final)} registres combinats")
     return df_final
 
 
-# ── Risc oïdi (model Kast & Bleyer simplificat) ───────────────────────────────
+# ── Risc oïdi ─────────────────────────────────────────────────────────────────
 def afegir_risc_oidio(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Temperatura favorable: 15–35°C (òptim 20–27°C)
-    HR mínima: 40% | risc alt: ≥70%
-    """
-    if "temperatura_c" not in df.columns or "humitat_pct" not in df.columns:
-        df["hora_favorable_oidio"] = None
-        df["risc_infeccio"] = "sense dades"
-        return df
-
+    """Model Kast & Bleyer simplificat."""
     t  = pd.to_numeric(df["temperatura_c"], errors="coerce")
     hr = pd.to_numeric(df["humitat_pct"],   errors="coerce")
 
@@ -214,7 +188,7 @@ def actualitzar_historial(df_nou: pd.DataFrame) -> pd.DataFrame:
         df_tot = df_nou
     df_tot = df_tot.sort_values("timestamp").reset_index(drop=True)
     df_tot.to_csv(CSV_HISTORIAL, index=False)
-    print(f"\n  → {len(df_nou)} registres nous | {len(df_tot)} totals → {CSV_HISTORIAL}")
+    print(f"  → {len(df_nou)} registres nous | {len(df_tot)} totals → {CSV_HISTORIAL}")
     return df_tot
 
 
@@ -242,14 +216,12 @@ def resum(df: pd.DataFrame):
 def main():
     print(f"\n[{datetime.now():%Y-%m-%d %H:%M}] Col·lector Son Nadal iniciat")
     print("─" * 50)
+    print("→ Descarregant sensors des de Google Charts JSON...")
 
-    s = requests.Session()
-
-    print("→ Descarregant sensors...")
-    df = obtenir_dades(s)
+    df = obtenir_dades()
 
     if df is None or df.empty:
-        print("\n⚠ No s'han pogut obtenir dades de cap sensor.")
+        print("\n⚠ No s'han pogut obtenir dades.")
         raise SystemExit(1)
 
     df = afegir_risc_oidio(df)
