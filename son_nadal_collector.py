@@ -161,54 +161,179 @@ def obtenir_dades() -> pd.DataFrame | None:
     return df_final
 
 
-# ── Risc oïdi ─────────────────────────────────────────────────────────────────
-def afegir_risc_oidio(df: pd.DataFrame) -> pd.DataFrame:
-    """Model Kast & Bleyer simplificat."""
-    t  = pd.to_numeric(df["temperatura_c"], errors="coerce")
-    hr = pd.to_numeric(df["humitat_pct"],   errors="coerce")
+# ── Model de Gubler ──────────────────────────────────────────────────────────
+# Taula d'Unitats d'Infecció (UI) horàries segons T i HR
+# Font: Gubler (1995), adaptat per a condicions mediterrànies
+#
+#           HR<40%  40-49%  50-69%  70-89%  >=90%
+# <15°C       0       0       0       0       0
+# 15-19°C     0       1       2       3       4
+# 20-27°C     0       2       4       8      12    ← òptim infecció
+# 28-35°C     0       1       2       3       4
+# >35°C       0       0       0       0       0
 
-    condicions = [
-        t.between(20, 27) & (hr >= 70),
-        t.between(15, 35) & (hr >= 50),
-        t.between(15, 35) & (hr >= 40),
+def ui_horaria(t: float, hr: float) -> float:
+    """
+    Calcula les Unitats d'Infecció per a una hora donada.
+    Retorna 0 si les condicions no són favorables.
+    """
+    if pd.isna(t) or pd.isna(hr):
+        return 0.0
+    if t < 15 or t > 35 or hr < 40:
+        return 0.0
+
+    # Factor HR: zona 0-3
+    if hr >= 90:
+        f_hr = 3
+    elif hr >= 70:
+        f_hr = 2
+    elif hr >= 50:
+        f_hr = 1
+    else:
+        f_hr = 0  # 40-49%: base
+
+    base = [1, 2, 3, 4][f_hr]  # UI base per HR
+    optim = 20 <= t <= 27       # rang òptim → dobla les UI
+    return float(base * 2 if optim else base)
+
+
+def calcular_gubler(df_tot: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcula les UI horàries i les acumula sobre tot l'historial.
+
+    Regles de reinici del comptador:
+      - Pluja >= 2mm en una finestra de 30 min (els conidis es renten)
+      - T > 35°C durant 3 intervals consecutius (6h+ de calor extrema)
+      - Inici de cada temporada (1 de març): reinici manual recomanat
+
+    Columnes afegides:
+      ui_horaria     → UI d'aquesta hora (0–12)
+      ui_acumulades  → UI acumulades des de l'últim reinici
+      reinici_ui     → 1 si s'ha reiniciat el comptador en aquesta fila
+      risc_gubler    → baix / moderat / alt / molt alt
+    """
+    df = df_tot.copy()
+    df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
+    df = df.sort_values("ts").reset_index(drop=True)
+
+    t_col  = pd.to_numeric(df["temperatura_c"],   errors="coerce")
+    hr_col = pd.to_numeric(df["humitat_pct"],      errors="coerce")
+    p_col  = pd.to_numeric(df["precipitacio_mm"],  errors="coerce").fillna(0)
+
+    ui_h    = np.zeros(len(df))
+    ui_acc  = np.zeros(len(df))
+    reinici = np.zeros(len(df), dtype=int)
+
+    acumulat = 0.0
+    calor_cnt = 0  # comptador de intervals consecutius T > 35°C
+
+    for i in range(len(df)):
+        t  = t_col.iloc[i]
+        hr = hr_col.iloc[i]
+        p  = p_col.iloc[i]
+
+        # Comptador de calor extrema
+        if not pd.isna(t) and t > 35:
+            calor_cnt += 1
+        else:
+            calor_cnt = 0
+
+        # Reinici per pluja o calor extrema prolongada
+        if p >= 2.0 or calor_cnt >= 3:
+            acumulat = 0.0
+            reinici[i] = 1
+            calor_cnt = 0
+
+        ui = ui_horaria(t, hr)
+        acumulat += ui
+
+        ui_h[i]   = ui
+        ui_acc[i] = acumulat
+
+    df["ui_horaria"]    = ui_h
+    df["ui_acumulades"] = ui_acc.round(1)
+    df["reinici_ui"]    = reinici
+
+    # Nivells de risc basats en UI acumulades
+    # Llindars estàndard Gubler per a Uncinula necator
+    condicions_risc = [
+        ui_acc >= 150,
+        ui_acc >= 100,
+        ui_acc >= 50,
     ]
-    df["risc_infeccio"]        = np.select(condicions, ["alt", "moderat", "baix"], default="no favorable")
-    df["hora_favorable_oidio"] = (t.between(15, 35) & (hr >= 40)).astype(int)
+    df["risc_gubler"] = np.select(
+        condicions_risc,
+        ["molt alt", "alt", "moderat"],
+        default="baix"
+    )
+
+    # Manté compatibilitat amb columnes antigues
+    df["hora_favorable_oidio"] = (ui_h > 0).astype(int)
+    df["risc_infeccio"] = df["risc_gubler"]  # substitueix el model antic
+
+    df = df.drop(columns=["ts"])
     return df
 
 
 # ── Historial ─────────────────────────────────────────────────────────────────
 def actualitzar_historial(df_nou: pd.DataFrame) -> pd.DataFrame:
+    """
+    Combina les dades noves amb l'historial existent i recalcula
+    les UI acumulades sobre tot l'historial (per continuïtat).
+    """
     os.makedirs("data", exist_ok=True)
     if os.path.exists(CSV_HISTORIAL):
         df_old = pd.read_csv(CSV_HISTORIAL)
-        df_tot = pd.concat([df_old, df_nou], ignore_index=True)
+        # Elimina columnes calculades per recalcular-les netes
+        cols_calc = ["ui_horaria", "ui_acumulades", "reinici_ui",
+                     "risc_gubler", "hora_favorable_oidio", "risc_infeccio"]
+        df_old = df_old.drop(columns=[c for c in cols_calc if c in df_old.columns])
+        df_nou_base = df_nou.drop(columns=[c for c in cols_calc if c in df_nou.columns])
+        df_tot = pd.concat([df_old, df_nou_base], ignore_index=True)
         df_tot = df_tot.drop_duplicates(subset=["timestamp"], keep="last")
     else:
-        df_tot = df_nou
+        cols_calc = ["ui_horaria", "ui_acumulades", "reinici_ui",
+                     "risc_gubler", "hora_favorable_oidio", "risc_infeccio"]
+        df_tot = df_nou.drop(columns=[c for c in cols_calc if c in df_nou.columns])
+
     df_tot = df_tot.sort_values("timestamp").reset_index(drop=True)
+
+    # Recalcula Gubler sobre TOT l'historial per mantenir continuïtat
+    df_tot = calcular_gubler(df_tot)
     df_tot.to_csv(CSV_HISTORIAL, index=False)
-    print(f"  → {len(df_nou)} registres nous | {len(df_tot)} totals → {CSV_HISTORIAL}")
+
+    registres_nous = len(df_nou)
+    print(f"  → {registres_nous} registres nous | {len(df_tot)} totals → {CSV_HISTORIAL}")
     return df_tot
 
 
 # ── Resum ─────────────────────────────────────────────────────────────────────
 def resum(df: pd.DataFrame):
     print(f"\n{'─'*50}")
-    print(f"  Últimes 24h  ({len(df)} registres)")
+    ult24 = df.tail(48)  # últimes 24h (registres de 30 min)
+    print(f"  Últimes 24h  ({len(ult24)} registres)")
     for col, nom, unit in [
         ("temperatura_c",   "Temperatura", "°C"),
         ("humitat_pct",     "Humitat",     "%"),
         ("precipitacio_mm", "Pluja",       "mm"),
     ]:
-        if col in df.columns:
-            s = pd.to_numeric(df[col], errors="coerce").dropna()
+        if col in ult24.columns:
+            s = pd.to_numeric(ult24[col], errors="coerce").dropna()
             if len(s):
-                print(f"  {nom:<12}: min={s.min():.1f}{unit}  max={s.max():.1f}{unit}  mitj={s.mean():.1f}{unit}")
-    if "risc_infeccio" in df.columns:
-        h = (df["risc_infeccio"] != "no favorable").sum()
-        print(f"\n  Hores favorables oïdi: {h}/{len(df)}")
-        print(df["risc_infeccio"].value_counts().to_string())
+                print(f"  {nom:<12}: min={s.min():.1f}{unit}  "
+                      f"max={s.max():.1f}{unit}  mitj={s.mean():.1f}{unit}")
+
+    if "ui_acumulades" in df.columns:
+        ui_actual = df["ui_acumulades"].iloc[-1]
+        ui_24h    = ult24["ui_horaria"].sum() if "ui_horaria" in ult24.columns else 0
+        risc      = df["risc_gubler"].iloc[-1] if "risc_gubler" in df.columns else "?"
+        reinicios = int(df["reinici_ui"].sum()) if "reinici_ui" in df.columns else 0
+        print(f"\n  ── Model Gubler ──────────────────────────")
+        print(f"  UI acumulades total : {ui_actual:.0f}")
+        print(f"  UI últimes 24h      : {ui_24h:.0f}")
+        print(f"  Risc actual         : {risc.upper()}")
+        print(f"  Reinicios (pluja/T) : {reinicios}")
+        print(f"  Llindars → moderat≥50  alt≥100  molt alt≥150")
     print(f"{'─'*50}\n")
 
 
@@ -218,15 +343,14 @@ def main():
     print("─" * 50)
     print("→ Descarregant sensors des de Google Charts JSON...")
 
-    df = obtenir_dades()
+    df_nou = obtenir_dades()
 
-    if df is None or df.empty:
+    if df_nou is None or df_nou.empty:
         print("\n⚠ No s'han pogut obtenir dades.")
         raise SystemExit(1)
 
-    df = afegir_risc_oidio(df)
-    actualitzar_historial(df)
-    resum(df)
+    df_historial = actualitzar_historial(df_nou)
+    resum(df_historial)
 
 
 if __name__ == "__main__":
