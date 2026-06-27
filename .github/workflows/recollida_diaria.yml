@@ -32,6 +32,9 @@ jobs:
       - name: Executa el col·lector
         run: python son_nadal_collector.py
 
+      - name: Executa el model de mildiu
+        run: python mildiu_collector.py
+
       - name: Genera el dashboard HTML
         run: python generate_dashboard.py
 
