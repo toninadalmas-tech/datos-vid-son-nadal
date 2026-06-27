@@ -94,36 +94,52 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
 
 def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
     """
-    Descarrega els tres sensors, fa resample a 30 min per separat
-    (cada sensor pot tenir timestamps lleugerament diferents)
-    i els combina per timestamp normalitzat.
+    Descarrega els tres sensors i els combina correctament:
+    1. Cada sensor es normalitza a intervals de 30 min (arrodonint el timestamp)
+    2. Es combinen per merge sobre el timestamp arrodonit
+    Això garanteix que T, HR i pluja sempre queden a la mateixa fila.
     """
-    dfs_resampled = {}
+    dfs_nets = {}
     for nom, url in URLS.items():
         df = descarregar_sensor(sessio, nom, url)
         if df is None:
             continue
 
-        # Resample individual per aquest sensor
+        # Converteix timestamp a datetime
         df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
-        df = df.dropna(subset=["ts"]).set_index("ts")[[nom]]
+        df = df.dropna(subset=["ts", nom])
 
+        # Arrodoneix cada mesura al interval de 30 min més proper
+        # ex: 13:08 → 13:00, 13:18 → 13:30, 13:33 → 13:30
+        df["ts30"] = df["ts"].dt.round("30min")
+
+        # Agrupa per interval: mitjana per T i HR, suma per pluja
         es_pluja = any(k in nom for k in ["precipitacio", "pluja", "rain"])
-        df_res = df.resample("30min").sum() if es_pluja else df.resample("30min").mean()
-        df_res = df_res.dropna()
-        dfs_resampled[nom] = df_res
-        print(f"  → {nom}: {len(df_res)} intervals de 30 min")
+        if es_pluja:
+            df_agr = df.groupby("ts30")[nom].sum()
+        else:
+            df_agr = df.groupby("ts30")[nom].mean()
 
-    if not dfs_resampled:
+        df_agr = df_agr.reset_index()
+        df_agr["timestamp"] = df_agr["ts30"].dt.strftime("%d/%m/%Y %H:%M")
+        df_agr = df_agr.drop(columns=["ts30"])
+
+        dfs_nets[nom] = df_agr
+        print(f"  → {nom}: {len(df_agr)} intervals de 30 min")
+
+    if not dfs_nets:
         return None
 
-    # Combina per índex temporal (ara sí que coincideixen exactament)
-    df_final = pd.concat(dfs_resampled.values(), axis=1).reset_index()
-    df_final["timestamp"] = df_final["ts"].dt.strftime("%d/%m/%Y %H:%M")
-    df_final = df_final.drop(columns=["ts"])
-    df_final = df_final.sort_values("timestamp").reset_index(drop=True)
+    # Merge de tots els sensors per timestamp
+    df_final = None
+    for df_s in dfs_nets.values():
+        if df_final is None:
+            df_final = df_s
+        else:
+            df_final = pd.merge(df_final, df_s, on="timestamp", how="inner")
 
-    print(f"  → Total combinat: {len(df_final)} registres")
+    df_final = df_final.sort_values("timestamp").reset_index(drop=True)
+    print(f"  → Total combinat (inner join): {len(df_final)} registres")
     return df_final
 
 
