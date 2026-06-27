@@ -64,22 +64,31 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
         return None
 
     print(f"  ✓ {nom}: {len(df)} files | columnes: {list(df.columns)}")
+    print(f"     Primeres 2 files:\n{df.head(2).to_string()}")
 
     # Estructura real del CSV de la CAIB:
-    # Codi | Nom | Data i Hora | Temperatura (Â°C) / Humitat (%) / Pluja (mm)
-    # → columna de temps = índex 2 (tercera)
-    # → columna de valor = índex 3 (quarta)
+    # Codi | Nom | Data i Hora | Valor
+    # La columna de valor és sempre l'última (índex -1),
+    # la de temps és la tercera (índex 2)
     if df.shape[1] < 4:
-        print(f"  ✗ {nom}: s'esperaven 4 columnes, hi ha {df.shape[1]}")
+        print(f"  ✗ {nom}: s'esperaven ≥4 columnes, hi ha {df.shape[1]}")
         return None
 
     col_temps = df.columns[2]
-    col_valor = df.columns[3]
+    col_valor = df.columns[-1]  # sempre l'última, independentment del nom
+
+    print(f"     Usant: temps='{col_temps}' | valor='{col_valor}'")
+
+    serie_valor = df[col_valor].astype(str).str.strip().str.replace(",", ".", regex=False)
+    print(f"     Primers valors raw: {serie_valor.head(3).tolist()}")
 
     df_net = pd.DataFrame({
         "timestamp": df[col_temps].astype(str).str.strip(),
-        nom:         pd.to_numeric(df[col_valor].astype(str).str.replace(",", "."), errors="coerce"),
+        nom:         pd.to_numeric(serie_valor, errors="coerce"),
     })
+    nans = df_net[nom].isna().sum()
+    if nans > 0:
+        print(f"     ⚠ {nans} valors no numèrics ignorats")
     return df_net.dropna(subset=["timestamp"])
 
 
