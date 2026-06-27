@@ -63,27 +63,22 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
         print(f"     Primers 200 caràcters: {text[:200]}")
         return None
 
-    # Normalitza els noms de columnes (minúscules, sense espais)
-    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
     print(f"  ✓ {nom}: {len(df)} files | columnes: {list(df.columns)}")
 
-    # Identifica la columna de temps (la primera columna o qualsevol amb 'dat'/'tim'/'hora')
-    col_temps = df.columns[0]
-    for c in df.columns:
-        if any(k in c for k in ["dat", "tim", "hora", "time", "date"]):
-            col_temps = c
-            break
-
-    # Identifica la columna de valor (la que no és temps)
-    col_valor = [c for c in df.columns if c != col_temps]
-    if not col_valor:
-        print(f"  ✗ {nom}: no s'ha trobat columna de valor")
+    # Estructura real del CSV de la CAIB:
+    # Codi | Nom | Data i Hora | Temperatura (Â°C) / Humitat (%) / Pluja (mm)
+    # → columna de temps = índex 2 (tercera)
+    # → columna de valor = índex 3 (quarta)
+    if df.shape[1] < 4:
+        print(f"  ✗ {nom}: s'esperaven 4 columnes, hi ha {df.shape[1]}")
         return None
-    col_valor = col_valor[0]
+
+    col_temps = df.columns[2]
+    col_valor = df.columns[3]
 
     df_net = pd.DataFrame({
         "timestamp": df[col_temps].astype(str).str.strip(),
-        nom:         pd.to_numeric(df[col_valor], errors="coerce"),
+        nom:         pd.to_numeric(df[col_valor].astype(str).str.replace(",", "."), errors="coerce"),
     })
     return df_net.dropna(subset=["timestamp"])
 
