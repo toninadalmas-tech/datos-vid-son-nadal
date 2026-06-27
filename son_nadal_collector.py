@@ -130,10 +130,14 @@ def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
     """
     Descarrega els tres sensors, filtra per les últimes 24h reals,
     arrodoneix a intervals de 30 min i combina per merge inner.
+    Cada sensor usa la seva pròpia sessió per evitar interferències.
     """
     dfs_nets = {}
     for nom, url in URLS.items():
-        df = descarregar_sensor(sessio, nom, url)
+        # Sessió nova per a cada sensor: evita que el POST d'un
+        # sensor sobreescrigui la sessió dels altres
+        sessio_sensor = requests.Session()
+        df = descarregar_sensor(sessio_sensor, nom, url)
         if df is None:
             continue
 
