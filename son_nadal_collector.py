@@ -88,8 +88,35 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
     return df_net.dropna(subset=["timestamp"])
 
 
+def resample_30min(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Redueix les dades a intervals de 30 minuts.
+    Temperatura i humitat: mitjana del període.
+    Pluja: suma acumulada del període.
+    """
+    df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
+    df = df.dropna(subset=["ts"]).set_index("ts").drop(columns=["timestamp"])
+
+    cols_suma  = [c for c in df.columns if any(k in c for k in ["precipitacio", "pluja", "rain"])]
+    cols_mitja = [c for c in df.columns if c not in cols_suma]
+
+    parts = []
+    if cols_mitja:
+        parts.append(df[cols_mitja].resample("30min").mean())
+    if cols_suma:
+        parts.append(df[cols_suma].resample("30min").sum())
+
+    df_res = pd.concat(parts, axis=1) if parts else df.resample("30min").mean()
+    df_res = df_res.dropna(how="all").reset_index()
+    df_res["timestamp"] = df_res["ts"].dt.strftime("%d/%m/%Y %H:%M")
+    df_res = df_res.drop(columns=["ts"])
+
+    print(f"  → Resample 30 min: {len(df_res)} registres (de les dades originals)")
+    return df_res
+
+
 def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
-    """Descarrega els tres sensors i els combina per timestamp."""
+    """Descarrega els tres sensors, els combina i fa resample a 30 min."""
     dfs = {}
     for nom, url in URLS.items():
         df = descarregar_sensor(sessio, nom, url)
@@ -99,12 +126,14 @@ def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
     if not dfs:
         return None
 
-    # Combina tots per timestamp (outer join per no perdre cap registre)
     df_final = None
     for df in dfs.values():
         df_final = df if df_final is None else pd.merge(df_final, df, on="timestamp", how="outer")
 
-    return df_final.sort_values("timestamp").reset_index(drop=True)
+    df_final = df_final.sort_values("timestamp").reset_index(drop=True)
+    df_final = resample_30min(df_final)
+
+    return df_final
 
 
 # ── Risc oïdi (model Kast & Bleyer simplificat) ───────────────────────────────
