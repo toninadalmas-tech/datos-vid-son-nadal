@@ -17,13 +17,25 @@ from datetime import datetime
 CSV_HISTORIAL  = "data/historial.csv"
 HTML_SORTIDA   = "docs/index.html"
 
+CSV_MILDIU = "data/mildiu_historial.csv"
+
 def carregar_dades() -> pd.DataFrame:
     df = pd.read_csv(CSV_HISTORIAL)
     df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
     df = df.dropna(subset=["ts"]).sort_values("ts").reset_index(drop=True)
-    # Últims 14 dies per al dashboard
     limit = df["ts"].max() - pd.Timedelta(days=14)
-    return df[df["ts"] >= limit].copy()
+    df = df[df["ts"] >= limit].copy()
+
+    # Fusiona dades de mildiu si existeixen
+    if os.path.exists(CSV_MILDIU):
+        dm = pd.read_csv(CSV_MILDIU)
+        cols_mildiu = ["timestamp", "pluja_10d_mm", "t_mitjana_10d",
+                       "hores_hr95", "condicio_primaria", "condicio_secundaria",
+                       "graus_dia_inc", "dies_incubacio_est", "risc_mildiu"]
+        cols_ok = [c for c in cols_mildiu if c in dm.columns]
+        df = pd.merge(df, dm[cols_ok], on="timestamp", how="left")
+
+    return df
 
 def generar_html(df: pd.DataFrame) -> str:
     # Prepara les sèries per a les gràfiques
@@ -43,6 +55,22 @@ def generar_html(df: pd.DataFrame) -> str:
     ui_act = pd.to_numeric(ultima.get("ui_acumulades"), errors="coerce")
     risc   = ultima.get("risc_gubler", "baix")
     ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
+
+    # ── Dades mildiu ──────────────────────────────────────────────────────────
+    risc_mildiu    = str(ultima.get("risc_mildiu", "inactiu"))
+    pluja_10d      = pd.to_numeric(ultima.get("pluja_10d_mm"), errors="coerce")
+    dies_inc       = pd.to_numeric(ultima.get("dies_incubacio_est"), errors="coerce")
+    risc_mildiu_data = pd.to_numeric(df.get("risc_mildiu", pd.Series(dtype=str)).map(
+        {"inactiu":0,"vigilancia":1,"primari":2,"secundari":3,"alt":4}
+    ).fillna(0), errors="coerce").tolist() if "risc_mildiu" in df.columns else [0]*len(labels)
+
+    risc_mildiu_color = {
+        "inactiu":   "#6b7280",
+        "vigilancia":"#f59e0b",
+        "primari":   "#f97316",
+        "secundari": "#ef4444",
+        "alt":       "#7c3aed",
+    }.get(risc_mildiu, "#6b7280")
 
     risc_color = {
         "baix":     "#22c55e",
@@ -75,7 +103,10 @@ def generar_html(df: pd.DataFrame) -> str:
         "ui_acc":        ui_acc,
         "risc_colors":   risc_colors,
         "reinici_points": reinici_points,
+        "risc_mildiu_data": risc_mildiu_data,
     })
+
+    dias_inc_str = f"{dies_inc:.0f}d" if not pd.isna(dies_inc) else "—"
 
     return f"""<!DOCTYPE html>
 <html lang="ca">
@@ -180,10 +211,45 @@ def generar_html(df: pd.DataFrame) -> str:
   <canvas id="chart-pluja"></canvas>
 </div>
 
+<hr style="border:none;border-top:1px solid #2a2d3a;margin:8px 0 20px">
+
+<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:16px">
+  Mildiu · <em style="font-weight:400;color:#9ca3af">Plasmopara viticola</em>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Risc mildiu</div>
+    <div class="kpi-val" style="font-size:18px;color:{risc_mildiu_color}">{risc_mildiu.upper()}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Pluja acumulada 10d</div>
+    <div class="kpi-val">{pluja_10d:.1f}<span class="kpi-unit">mm</span></div>
+    <div class="sub" style="margin-top:4px">Llindar: 10 mm</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Dies fins a símptomes</div>
+    <div class="kpi-val">{dias_inc_str}</div>
+    <div class="sub" style="margin-top:4px">Si hi ha infecció activa</div>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-title">Risc mildiu (0=inactiu → 4=alt)</div>
+  <canvas id="chart-mildiu"></canvas>
+  <div class="llindars" style="margin-top:8px">
+    <span class="ll" style="color:#6b7280;border-color:#6b7280">Inactiu</span>
+    <span class="ll" style="color:#f59e0b;border-color:#f59e0b">Vigilància</span>
+    <span class="ll" style="color:#f97316;border-color:#f97316">Primari</span>
+    <span class="ll" style="color:#ef4444;border-color:#ef4444">Secundari</span>
+    <span class="ll" style="color:#7c3aed;border-color:#7c3aed">Alt</span>
+  </div>
+</div>
+
 <footer>
   Son Nadal (RC0039468) · 39.5146, 3.15405 · 
   Actualitzat: {datetime.now().strftime("%d/%m/%Y %H:%M")} · 
-  Model: Gubler (1995) adaptat per a Uncinula necator
+  Oïdi: Gubler (1995) · Mildiu: Model EPI + regla 3×10 (Goidanich)
 </footer>
 
 <script>
@@ -301,6 +367,37 @@ new Chart(document.getElementById('chart-pluja'), {{
       x:cfgBase.scales.x,
       y:{{...cfgBase.scales.y, min:0,
           title:{{display:true,text:'mm',color:'#38bdf8',font:{{size:10}}}}}}
+    }}
+  }}
+}});
+
+// Gràfica risc mildiu
+const mildiuColors = D.risc_mildiu_data.map(v =>
+  v >= 4 ? 'rgba(124,58,237,.8)' :
+  v >= 3 ? 'rgba(239,68,68,.8)' :
+  v >= 2 ? 'rgba(249,115,22,.8)' :
+  v >= 1 ? 'rgba(245,158,11,.8)' :
+           'rgba(107,114,128,.4)'
+);
+
+new Chart(document.getElementById('chart-mildiu'), {{
+  type:'bar',
+  data:{{
+    labels: D.labels,
+    datasets:[{{
+      label:'Risc mildiu', data:D.risc_mildiu_data,
+      backgroundColor: mildiuColors,
+      borderColor: mildiuColors.map(c=>c.replace(',.8)',',1)').replace(',.4)',',1)')),
+      borderWidth:1
+    }}]
+  }},
+  options:{{...cfgBase,
+    scales:{{
+      x:cfgBase.scales.x,
+      y:{{...cfgBase.scales.y, min:0, max:4,
+          ticks:{{stepSize:1, callback: v => ['Inact.','Vigil.','Prim.','Sec.','Alt'][v]||v,
+                  color:'#6b7280', font:{{size:10}}}},
+          title:{{display:true,text:'Nivell',color:'#9ca3af',font:{{size:10}}}}}}
     }}
   }}
 }});
