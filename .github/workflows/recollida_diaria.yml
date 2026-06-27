@@ -16,8 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pages: write
-      id-token: write
 
     steps:
       - name: Descarrega el repositori
@@ -44,3 +42,19 @@ jobs:
           git add data/historial.csv docs/index.html
           git diff --cached --quiet || git commit -m "dades: $(date +'%Y-%m-%d') actualitzat"
           git push
+
+      - name: Publica a Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          # Instal·la el CLI de Netlify
+          npm install -g netlify-cli
+
+          # Publica la carpeta docs/ al site existent
+          netlify deploy \
+            --dir=docs \
+            --site=$NETLIFY_SITE_ID \
+            --auth=$NETLIFY_AUTH_TOKEN \
+            --prod \
+            --message="$(date +'%Y-%m-%d') actualitzat"
