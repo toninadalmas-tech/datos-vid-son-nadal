@@ -40,9 +40,29 @@ HEADERS = {
 
 # ── Descàrrega ────────────────────────────────────────────────────────────────
 def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataFrame | None:
-    """Descarrega el CSV d'un sensor i retorna un DataFrame amb [timestamp, valor]."""
+    """
+    Descarrega el CSV d'un sensor.
+    La web requereix primer un POST a la URL base del sensor (sense /exportcsv)
+    per establir la sessió/cookie, i després un GET del CSV.
+    """
+    # URL base del sensor (sense /exportcsv)
+    url_base = url.replace("/exportcsv", "")
+
     try:
-        r = sessio.get(url, headers=HEADERS, timeout=20, verify=False)
+        # Pas 1: POST per establir la sessió (igual que fa el formulari web)
+        r_post = sessio.post(
+            url_base,
+            headers={**HEADERS, "Content-Type": "application/x-www-form-urlencoded"},
+            verify=False, timeout=20, allow_redirects=True
+        )
+        print(f"  POST {nom}: {r_post.status_code} | URL final: {r_post.url}")
+
+        # Pas 2: GET del CSV amb la sessió activa
+        r = sessio.get(
+            url,
+            headers={**HEADERS, "Referer": r_post.url},
+            verify=False, timeout=20
+        )
         r.raise_for_status()
     except requests.RequestException as e:
         print(f"  ✗ {nom}: error de connexió — {e}")
@@ -53,14 +73,17 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
         print(f"  ✗ {nom}: resposta buida")
         return None
 
+    # Log del text raw per diagnosticar separadors i estructura
+    print(f"     Raw (primers 150 cars): {repr(text[:150])}")
+
     # Detecta separador (punt i coma o coma)
     sep = ";" if text.count(";") > text.count(",") else ","
+    print(f"     Separador detectat: '{sep}'")
 
     try:
         df = pd.read_csv(io.StringIO(text), sep=sep)
     except Exception as e:
         print(f"  ✗ {nom}: no s'ha pogut llegir el CSV — {e}")
-        print(f"     Primers 200 caràcters: {text[:200]}")
         return None
 
     print(f"  ✓ {nom}: {len(df)} files | columnes: {list(df.columns)}")
@@ -92,12 +115,21 @@ def descarregar_sensor(sessio: requests.Session, nom: str, url: str) -> pd.DataF
     return df_net.dropna(subset=["timestamp"])
 
 
+def filtrar_ultimes_24h(df: pd.DataFrame, col_ts: str = "ts") -> pd.DataFrame:
+    """Filtra per quedar-nos només amb les dades de les últimes 24h reals."""
+    ara = pd.Timestamp.now()
+    limit = ara - pd.Timedelta(hours=24)
+    df_fil = df[df[col_ts] >= limit].copy()
+    eliminats = len(df) - len(df_fil)
+    if eliminats > 0:
+        print(f"     ⚠ {eliminats} files fora de les últimes 24h eliminades")
+    return df_fil
+
+
 def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
     """
-    Descarrega els tres sensors i els combina correctament:
-    1. Cada sensor es normalitza a intervals de 30 min (arrodonint el timestamp)
-    2. Es combinen per merge sobre el timestamp arrodonit
-    Això garanteix que T, HR i pluja sempre queden a la mateixa fila.
+    Descarrega els tres sensors, filtra per les últimes 24h reals,
+    arrodoneix a intervals de 30 min i combina per merge inner.
     """
     dfs_nets = {}
     for nom, url in URLS.items():
@@ -107,39 +139,39 @@ def obtenir_dades(sessio: requests.Session) -> pd.DataFrame | None:
 
         # Converteix timestamp a datetime
         df["ts"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
-        df = df.dropna(subset=["ts", nom])
+        df = df.dropna(subset=["ts"])
 
-        # Arrodoneix cada mesura al interval de 30 min més proper
-        # ex: 13:08 → 13:00, 13:18 → 13:30, 13:33 → 13:30
+        # FILTRE CLAU: només dades de les últimes 24h reals
+        df = filtrar_ultimes_24h(df)
+        if df.empty:
+            print(f"  ✗ {nom}: cap dada dins les últimes 24h")
+            continue
+
+        df = df.dropna(subset=[nom])
+
+        # Arrodoneix al interval de 30 min més proper
         df["ts30"] = df["ts"].dt.round("30min")
 
-        # Agrupa per interval: mitjana per T i HR, suma per pluja
+        # Agrupa: mitjana per T i HR, suma per pluja
         es_pluja = any(k in nom for k in ["precipitacio", "pluja", "rain"])
-        if es_pluja:
-            df_agr = df.groupby("ts30")[nom].sum()
-        else:
-            df_agr = df.groupby("ts30")[nom].mean()
-
+        df_agr = df.groupby("ts30")[nom].sum() if es_pluja else df.groupby("ts30")[nom].mean()
         df_agr = df_agr.reset_index()
         df_agr["timestamp"] = df_agr["ts30"].dt.strftime("%d/%m/%Y %H:%M")
         df_agr = df_agr.drop(columns=["ts30"])
 
         dfs_nets[nom] = df_agr
-        print(f"  → {nom}: {len(df_agr)} intervals de 30 min")
+        print(f"  → {nom}: {len(df_agr)} intervals de 30 min (últimes 24h)")
 
     if not dfs_nets:
         return None
 
-    # Merge de tots els sensors per timestamp
+    # Merge inner: només files on coincideixen els tres sensors
     df_final = None
     for df_s in dfs_nets.values():
-        if df_final is None:
-            df_final = df_s
-        else:
-            df_final = pd.merge(df_final, df_s, on="timestamp", how="inner")
+        df_final = df_s if df_final is None else pd.merge(df_final, df_s, on="timestamp", how="inner")
 
     df_final = df_final.sort_values("timestamp").reset_index(drop=True)
-    print(f"  → Total combinat (inner join): {len(df_final)} registres")
+    print(f"  → Total combinat: {len(df_final)} registres")
     return df_final
 
 
