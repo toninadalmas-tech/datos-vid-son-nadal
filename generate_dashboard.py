@@ -159,6 +159,13 @@ def generar_html(df: pd.DataFrame) -> str:
     <h1>Oïdi de la vid · Son Nadal</h1>
     <div class="sub">Felanitx, Mallorca · Model Gubler · Últims 14 dies</div>
   </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="tractaments.html" style="font-size:12px;color:#9ca3af;text-decoration:none;
+       border:1px solid #2a2d3a;padding:6px 12px;border-radius:8px;
+       display:inline-flex;align-items:center;gap:6px" title="Gestionar tractaments">
+      ＋ Tractament
+    </a>
+  </div>
   <div>
     <span class="badge" style="color:{risc_color};border-color:{risc_color}">
       ● {risc.upper()}
