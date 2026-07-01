@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tractaments · Son Nadal</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117;--surface:#1a1d27;--surface2:#232635;
+      --border:#2a2d3a;--text:#e8eaf0;--muted:#6b7280;
+      --accent:#3b82f6;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+      --radius:8px;
+    }
+    body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+         font-size:14px;padding:16px;max-width:680px;margin:0 auto}
+    h1{font-size:18px;font-weight:500;margin-bottom:4px}
+    .sub{color:var(--muted);font-size:12px;margin-bottom:24px}
+    .card{background:var(--surface);border:1px solid var(--border);
+          border-radius:12px;padding:20px;margin-bottom:16px}
+    .card-title{font-size:13px;font-weight:500;color:var(--muted);
+                text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:12px}
+    label:first-of-type{margin-top:0}
+    input,select,textarea{
+      width:100%;background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--radius);color:var(--text);font-size:14px;
+      padding:8px 12px;outline:none;font-family:inherit;
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+    textarea{resize:vertical;min-height:60px}
+    .checkbox-group{display:flex;gap:12px;margin-top:4px}
+    .checkbox-label{display:flex;align-items:center;gap:6px;cursor:pointer;
+                    font-size:13px;color:var(--text)}
+    input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
+         border-radius:var(--radius);font-size:14px;font-weight:500;
+         cursor:pointer;border:none;transition:opacity .15s}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-primary:hover{opacity:.85}
+    .btn-danger{background:transparent;border:1px solid var(--red);
+                color:var(--red);padding:4px 10px;font-size:12px}
+    .btn-danger:hover{background:rgba(239,68,68,.1)}
+    .actions{display:flex;justify-content:flex-end;margin-top:20px}
+    .tractament-item{display:grid;grid-template-columns:1fr auto;
+                     gap:8px;align-items:start;padding:12px 0;
+                     border-bottom:1px solid var(--border)}
+    .tractament-item:last-child{border-bottom:none}
+    .t-data{font-size:13px;font-weight:500}
+    .t-producte{font-size:12px;color:var(--muted);margin-top:2px}
+    .badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+    .badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+    .badge-oidio{background:rgba(245,158,11,.15);color:var(--amber)}
+    .badge-mildiu{background:rgba(59,130,246,.15);color:var(--accent)}
+    .empty{color:var(--muted);font-size:13px;padding:16px 0;text-align:center}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+           background:#1a1d27;border:1px solid var(--border);border-radius:var(--radius);
+           padding:10px 20px;font-size:13px;display:none;z-index:99}
+    .toast.ok{border-color:var(--green);color:var(--green)}
+    .toast.err{border-color:var(--red);color:var(--red)}
+    .config-box{background:var(--surface2);border:1px solid var(--border);
+                border-radius:var(--radius);padding:12px;margin-bottom:16px;
+                font-size:12px;color:var(--muted);line-height:1.6}
+    .config-box input{margin-top:6px;font-size:12px;font-family:monospace}
+    code{background:var(--surface2);padding:2px 6px;border-radius:4px;
+         font-family:monospace;font-size:11px;color:var(--accent)}
+    @media(max-width:480px){.checkbox-group{flex-direction:column;gap:8px}}
+  </style>
+</head>
+<body>
+
+<a href="index.html" style="color:var(--muted);font-size:12px;
+   text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:16px">
+  ← Tornar al dashboard
+</a>
+
+<h1>Tractaments fitosanitaris</h1>
+<div class="sub">Son Nadal · Felanitx</div>
+
+<div class="config-box" id="config-section">
+  <strong style="color:var(--text)">Configuració inicial (una sola vegada)</strong><br>
+  Per guardar els tractaments al repositori de GitHub, necessites un token d'accés.
+  <br><br>
+  Token GitHub (amb permís <code>contents:write</code>):
+  <input type="password" id="gh-token" placeholder="ghp_..." 
+         oninput="localStorage.setItem('gh_token',this.value)">
+  Repositori (usuari/nom):
+  <input type="text" id="gh-repo" placeholder="usuari/oidio-vid-felanitx"
+         oninput="localStorage.setItem('gh_repo',this.value)">
+  <div style="margin-top:8px;font-size:11px">
+    El token es guarda al teu navegador i no es comparteix amb ningú.
+    Crea'l a GitHub → Settings → Developer settings → Personal access tokens → Fine-grained → 
+    permís <code>Contents: Read and write</code>.
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Registrar tractament</div>
+
+  <label>Data i hora del tractament</label>
+  <input type="datetime-local" id="inp-data">
+
+  <label>Producte aplicat</label>
+  <input type="text" id="inp-producte" placeholder="Sofre mojable 80%, Mancozeb, Folpet...">
+
+  <label>Dosi</label>
+  <input type="text" id="inp-dosi" placeholder="3 kg/ha, 2 L/ha...">
+
+  <label>Malalties tractades</label>
+  <div class="checkbox-group">
+    <label class="checkbox-label">
+      <input type="checkbox" id="cb-oidio" checked> Oïdi
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="cb-mildiu"> Mildiu
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="cb-botritis"> Botritis
+    </label>
+  </div>
+
+  <label>Notes (opcional)</label>
+  <textarea id="inp-notes" placeholder="Condicions, observacions..."></textarea>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="afegirTractament()">
+      Guardar tractament
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Historial de tractaments</div>
+  <div id="llista-tractaments"><div class="empty">Carregant...</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FITXER = "tractaments.json";
+
+// Restaura configuració guardada
+document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+document.getElementById('gh-repo').value  = localStorage.getItem('gh_repo')  || '';
+
+// Data per defecte: ara
+const ara = new Date();
+ara.setMinutes(ara.getMinutes() - ara.getTimezoneOffset());
+document.getElementById('inp-data').value = ara.toISOString().slice(0,16);
+
+function token() { return localStorage.getItem('gh_token') || ''; }
+function repo()  { return localStorage.getItem('gh_repo')  || ''; }
+
+function toast(msg, ok=true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+async function llegirFitxer() {
+  if (!token() || !repo()) return { tractaments: [] };
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${repo()}/contents/${FITXER}`,
+      { headers: { Authorization: `Bearer ${token()}`, Accept: 'application/vnd.github+json' } }
+    );
+    if (r.status === 404) return { tractaments: [] };
+    const data = await r.json();
+    const contingut = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    contingut._sha = data.sha;
+    return contingut;
+  } catch(e) {
+    toast('Error llegint tractaments.json: ' + e.message, false);
+    return { tractaments: [] };
+  }
+}
+
+async function guardarFitxer(dades) {
+  if (!token() || !repo()) {
+    toast('Configura el token i el repositori primer', false);
+    return false;
+  }
+  const sha = dades._sha;
+  delete dades._sha;
+  dades._instruccions = "Afegeix un registre per cada tractament. El model reinicia els comptadors a partir d'aquella data.";
+
+  const cos = {
+    message: `tractament: ${new Date().toISOString().slice(0,10)}`,
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(dades, null, 2)))),
+  };
+  if (sha) cos.sha = sha;
+
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${repo()}/contents/${FITXER}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token()}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cos),
+      }
+    );
+    return r.ok;
+  } catch(e) {
+    toast('Error guardant: ' + e.message, false);
+    return false;
+  }
+}
+
+async function afegirTractament() {
+  const data     = document.getElementById('inp-data').value;
+  const producte = document.getElementById('inp-producte').value.trim();
+  const dosi     = document.getElementById('inp-dosi').value.trim();
+  const notes    = document.getElementById('inp-notes').value.trim();
+
+  if (!data || !producte) {
+    toast('La data i el producte són obligatoris', false);
+    return;
+  }
+
+  const malalties = [];
+  if (document.getElementById('cb-oidio').checked)   malalties.push('oidio');
+  if (document.getElementById('cb-mildiu').checked)  malalties.push('mildiu');
+  if (document.getElementById('cb-botritis').checked) malalties.push('botritis');
+
+  const nou = { data, producte, malalties, dosi, notes };
+  const dades = await llegirFitxer();
+  dades.tractaments = dades.tractaments || [];
+  dades.tractaments.push(nou);
+  dades.tractaments.sort((a,b) => a.data.localeCompare(b.data));
+
+  const ok = await guardarFitxer(dades);
+  if (ok) {
+    toast('Tractament guardat! El model s\'actualitzarà demà al matí.');
+    document.getElementById('inp-producte').value = '';
+    document.getElementById('inp-dosi').value = '';
+    document.getElementById('inp-notes').value = '';
+    renderLlista(dades.tractaments);
+  } else {
+    toast('No s\'ha pogut guardar. Comprova el token i el repositori.', false);
+  }
+}
+
+async function eliminarTractament(idx) {
+  if (!confirm('Eliminar aquest tractament?')) return;
+  const dades = await llegirFitxer();
+  dades.tractaments.splice(idx, 1);
+  const ok = await guardarFitxer(dades);
+  if (ok) {
+    toast('Tractament eliminat');
+    renderLlista(dades.tractaments);
+  }
+}
+
+function renderLlista(tractaments) {
+  const el = document.getElementById('llista-tractaments');
+  if (!tractaments || tractaments.length === 0) {
+    el.innerHTML = '<div class="empty">Cap tractament registrat</div>';
+    return;
+  }
+  el.innerHTML = [...tractaments].reverse().map((t, i) => {
+    const idxReal = tractaments.length - 1 - i;
+    const data = new Date(t.data).toLocaleDateString('ca-ES', 
+      {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const badges = (t.malalties || []).map(m =>
+      `<span class="badge badge-${m}">${m}</span>`
+    ).join('');
+    return `
+      <div class="tractament-item">
+        <div>
+          <div class="t-data">${data} — ${t.producte}</div>
+          <div class="t-producte">${t.dosi || ''}${t.notes ? ' · '+t.notes : ''}</div>
+          <div class="badges">${badges}</div>
+        </div>
+        <button class="btn btn-danger" onclick="eliminarTractament(${idxReal})">
+          Eliminar
+        </button>
+      </div>`;
+  }).join('');
+}
+
+// Carrega la llista en obrir la pàgina
+(async () => {
+  const dades = await llegirFitxer();
+  renderLlista(dades.tractaments);
+  if (token() && repo()) {
+    document.getElementById('config-section').style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>
