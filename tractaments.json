@@ -1,14 +1,4 @@
 {
-  "tractaments": [
-    {
-      "data": "2026-07-02T18:50",
-      "producte": "sofre",
-      "malalties": [
-        "oidio"
-      ],
-      "dosi": "3l",
-      "notes": ""
-    }
-  ],
+  "tractaments": [],
   "_instruccions": "Afegeix un registre per cada tractament."
 }
