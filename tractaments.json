@@ -8,7 +8,16 @@
       ],
       "dosi": "3l/ha",
       "notes": "tractament de prova"
+    },
+    {
+      "data": "2026-07-02T18:50",
+      "producte": "sofre",
+      "malalties": [
+        "oidio"
+      ],
+      "dosi": "3l",
+      "notes": ""
     }
   ],
-  "_instruccions": "Afegeix un registre per cada tractament. El model reinicia els comptadors a partir d'aquella data."
+  "_instruccions": "Afegeix un registre per cada tractament."
 }
