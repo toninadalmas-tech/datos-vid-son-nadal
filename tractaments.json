@@ -1,4 +1,16 @@
 {
-  "tractaments": [],
+  "tractaments": [
+    {
+      "data": "2026-07-01T19:47",
+      "producte": "Sofre en pols",
+      "malalties": [
+        "oidio"
+      ],
+      "dosi": "",
+      "notes": "",
+      "ecologic": true,
+      "dies_proteccio": 7
+    }
+  ],
   "_instruccions": "Afegeix un registre per cada tractament."
 }
