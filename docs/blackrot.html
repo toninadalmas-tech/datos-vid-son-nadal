@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Black Rot · Son Nadal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#232635;
+  --border:#2a2d3a;--text:#e8eaf0;--muted:#6b7280;
+  --accent:#3b82f6;--verd:#22c55e;--ambre:#f59e0b;
+  --taronja:#f97316;--vermell:#ef4444;--violeta:#7c3aed;
+  --radius:10px;
+}
+body{background:var(--bg);color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.5;margin:0;padding:0}
+
+/* Navbar */
+.navbar{position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:56px;
+  background:rgba(15,17,23,0.88);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border)}
+.nav-brand{font-size:16px;font-weight:600;color:#fff;
+  text-decoration:none;display:flex;align-items:center;gap:8px}
+.nav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nav-link{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;
+  color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .2s}
+.nav-link:hover{color:var(--text);background:var(--surface)}
+.nav-link.active{color:#fff;background:var(--surface2)}
+
+/* Main */
+main{max-width:1100px;margin:0 auto;padding:24px 16px}
+
+/* Page header */
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;
+  margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-header h1{font-size:22px;font-weight:600;color:#fff;letter-spacing:-.3px}
+.page-header .sub{color:var(--muted);font-size:12px;margin-top:2px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
+  border-radius:20px;font-size:12px;font-weight:600;
+  border:1px solid currentColor;letter-spacing:.3px}
+
+/* KPI cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px 18px;transition:border-color .2s}
+.kpi:hover{border-color:#3a3d4a}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:6px}
+.kpi-val{font-size:28px;font-weight:600;color:#fff;line-height:1}
+.kpi-unit{font-size:13px;color:var(--muted);margin-left:2px}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.ui-bar-outer{background:var(--border);border-radius:4px;height:6px;
+  margin-top:8px;overflow:hidden}
+.ui-bar-inner{height:100%;border-radius:4px;transition:width .5s}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:4px;margin-bottom:16px}
+.filter-btn{padding:5px 14px;border-radius:7px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;
+  font-size:12px;font-weight:500;font-family:inherit;transition:all .2s}
+.filter-btn:hover{color:var(--text);border-color:#3a3d4a}
+.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Chart cards */
+.chart-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.chart-title{font-size:13px;font-weight:500;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+canvas{max-height:200px}
+.llindars{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:11px}
+.ll{padding:2px 8px;border-radius:4px;border:1px solid}
+
+/* Disease cards (index) */
+.disease-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:16px;margin-bottom:28px}
+.disease-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:22px;text-decoration:none;color:inherit;
+  transition:all .25s ease;position:relative;overflow:hidden;display:block}
+.disease-card:hover{border-color:#3a3d4a;transform:translateY(-2px);
+  box-shadow:0 8px 25px rgba(0,0,0,.3)}
+.disease-card .icon{font-size:28px;margin-bottom:10px;display:block}
+.disease-card .name{font-size:16px;font-weight:600;color:#fff;margin-bottom:2px}
+.disease-card .agent{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px}
+.disease-card .risk-line{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.disease-card .risk-badge{display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.disease-card .desc{font-size:12px;color:var(--muted);line-height:1.5}
+.disease-card .arrow{position:absolute;right:18px;bottom:18px;
+  color:var(--muted);font-size:18px;transition:transform .2s}
+.disease-card:hover .arrow{transform:translateX(3px);color:var(--text)}
+
+/* Info cards */
+.info-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.info-card h3{font-size:14px;font-weight:600;color:#fff;margin-bottom:8px}
+.info-card p{color:var(--muted);font-size:13px;line-height:1.6}
+.info-card ul{color:var(--muted);font-size:13px;margin-left:16px;margin-top:6px;line-height:1.8}
+.notice{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);
+  border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;
+  font-size:13px;color:var(--accent);display:flex;align-items:center;gap:10px}
+
+/* Recommendation Box */
+.recom-box{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
+  border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;
+  font-size:13px;color:var(--verd);display:flex;align-items:flex-start;gap:12px}
+.recom-box.warning{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);color:var(--vermell)}
+.recom-box.info{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:var(--accent)}
+.recom-icon{font-size:18px;line-height:1}
+.recom-content h4{font-size:14px;font-weight:600;margin-bottom:4px;color:currentColor}
+.recom-content p{color:var(--text);opacity:0.9;margin-bottom:4px;line-height:1.5}
+.recom-content ul{color:var(--text);opacity:0.9;margin-left:16px;margin-top:4px;line-height:1.6}
+
+/* Treatment section */
+.section-title{font-size:16px;font-weight:600;color:#fff;margin:32px 0 16px;
+  padding-top:20px;border-top:1px solid var(--border)}
+.card{background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:500;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:12px}
+label:first-of-type{margin-top:0}
+input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:14px;
+  padding:8px 12px;outline:none;font-family:inherit}
+input:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:60px}
+.checkbox-group{display:flex;gap:12px;margin-top:4px;flex-wrap:wrap}
+.checkbox-label{display:flex;align-items:center;gap:6px;cursor:pointer;
+  font-size:13px;color:var(--text)}
+input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;
+  border-radius:8px;font-size:14px;font-weight:500;
+  cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-danger{background:transparent;border:1px solid var(--vermell);
+  color:var(--vermell);padding:4px 10px;font-size:12px}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+.actions{display:flex;justify-content:flex-end;margin-top:20px}
+.tractament-item{display:grid;grid-template-columns:1fr auto;
+  gap:8px;align-items:start;padding:12px 0;
+  border-bottom:1px solid var(--border)}
+.tractament-item:last-child{border-bottom:none}
+.t-data{font-size:13px;font-weight:500}
+.t-producte{font-size:12px;color:var(--muted);margin-top:2px}
+.t-badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.t-badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.t-badge-oidio{background:rgba(245,158,11,.15);color:var(--ambre)}
+.t-badge-mildiu{background:rgba(59,130,246,.15);color:var(--accent)}
+.t-badge-botritis{background:rgba(139,92,246,.15);color:#a78bfa}
+.t-badge-blackrot{background:rgba(239,68,68,.15);color:var(--vermell)}
+.empty{color:var(--muted);font-size:13px;padding:16px 0;text-align:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#1a1d27;border:1px solid var(--border);border-radius:8px;
+  padding:10px 20px;font-size:13px;display:none;z-index:999}
+.toast.ok{border-color:var(--verd);color:var(--verd)}
+.toast.err{border-color:var(--vermell);color:var(--vermell)}
+.config-box{background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:14px;margin-bottom:16px;
+  font-size:12px;color:var(--muted);line-height:1.6}
+.config-box input{margin-top:6px;font-size:12px;font-family:monospace}
+code{background:var(--surface2);padding:2px 6px;border-radius:4px;
+  font-family:monospace;font-size:11px;color:var(--accent)}
+
+/* Footer */
+footer{color:var(--muted);font-size:11px;text-align:center;
+  margin-top:32px;padding-top:16px;border-top:1px solid var(--border);line-height:1.8}
+
+/* Responsive */
+@media(max-width:600px){
+  canvas{max-height:160px}
+  .navbar{padding:0 12px}
+  .nav-link{padding:6px 10px;font-size:12px}
+  main{padding:16px 12px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .disease-grid{grid-template-columns:1fr}
+  .checkbox-group{flex-direction:column;gap:8px}
+  .page-header h1{font-size:18px}
+}
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="nav-brand">🍇 Son Nadal</a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Inici</a>
+    <a href="oidi.html" class="nav-link">Oïdi</a>
+    <a href="mildiu.html" class="nav-link">Mildiu</a>
+    <a href="botritis.html" class="nav-link">Botritis</a>
+    <a href="blackrot.html" class="nav-link active">Black Rot</a>
+  </div>
+</nav>
+<main>
+
+<div class="page-header">
+  <div>
+    <h1>Black Rot</h1>
+    <div class="sub">Guignardia bidwellii · Podridura negra</div>
+  </div>
+  <span class="badge" style="color:#6b7280;border-color:#6b7280">SENSE MODEL</span>
+</div>
+
+<div class="notice">
+  ℹ️ Model predictiu en desenvolupament. Aquesta pàgina permet registrar tractaments
+  i consultar els factors de risc principals.
+</div>
+
+
+<div class="recom-box info">
+  <div class="recom-icon">ℹ️</div>
+  <div class="recom-content">
+    <h4>Estratègia de tractament (Black Rot)</h4>
+    <p>Control principalment preventiu des que es fan visibles les inflorescències fins al tancament del raïm.</p>
+    <ul>
+      <li><strong>Tractaments:</strong> Triazols (ex: Miclobutanil) o ditiocarbamats (consultar estat del registre de Mancozeb/Metiram).</li>
+      <li>Són vitals les pràctiques culturals: eliminar i cremar raïms momificats i sarments infectats de l'any anterior on hiverna el fong.</li>
+    </ul>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
+  <div class="info-card">
+    <h3>Descripció</h3>
+    <p>El black rot o podridura negra és causat pel fong <em>Guignardia bidwellii</em>.
+    És una malaltia molt destructiva que pot afectar fulles, brots i especialment els raïms,
+    que acaben momificats i negres a la planta.</p>
+  </div>
+  <div class="info-card">
+    <h3>Factors de risc</h3>
+    <ul>
+      <li>Temperatura entre 20°C i 30°C (òptim ~26°C)</li>
+      <li>Pluja o mullat foliar durant &gt; 6 hores</li>
+      <li>Raïms infectats momificats de l'any anterior</li>
+      <li>Fulles mortes amb picnidis al terra</li>
+      <li>Període crític: floració fins a tancament del raïm</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h3>Prevenció</h3>
+    <ul>
+      <li>Eliminar raïms momificats de la vinya i del terra</li>
+      <li>Tractaments preventius des de brotació</li>
+      <li>Productes: Mancozeb, Metiram, Myclobutanil</li>
+      <li>Millorar la ventilació amb poda adequada</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h3>Símptomes</h3>
+    <ul>
+      <li>Lesions marrons circulars a fulles amb vora fosca</li>
+      <li>Petits punts negres (picnidis) sobre les lesions</li>
+      <li>Raïms que es tornen negres i es momifiquen</li>
+      <li>Lesions allargades a sarments joves</li>
+    </ul>
+  </div>
+</div>
+
+
+<div class="section-title">Tractaments</div>
+
+<div class="config-box" id="config-section">
+  <strong style="color:var(--text)">Configuració GitHub (una sola vegada)</strong><br>
+  Per guardar els tractaments al repositori necessites un token d'accés.<br><br>
+  Token GitHub (permís <code>contents:write</code>):
+  <input type="password" id="gh-token" placeholder="ghp_..."
+         oninput="localStorage.setItem('gh_token',this.value)">
+  Repositori (usuari/nom):
+  <input type="text" id="gh-repo" placeholder="usuari/repo"
+         oninput="localStorage.setItem('gh_repo',this.value)">
+  <div style="margin-top:8px;font-size:11px">
+    El token es guarda localment al navegador.
+    GitHub → Settings → Developer settings → Personal access tokens → Fine-grained →
+    <code>Contents: Read and write</code>.
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title">Registrar tractament</div>
+  <div style="margin-top:16px;">
+    <label>Data i hora del tractament</label>
+    <input type="datetime-local" id="inp-data">
+    
+    <label style="margin-top:12px;">Malalties tractades</label>
+    <div class="checkbox-group">
+        <label class="checkbox-label"><input type="checkbox" id="cb-oidio" onchange="actualitzarSelectorProductes()"> Oïdi</label>
+      <label class="checkbox-label"><input type="checkbox" id="cb-mildiu" onchange="actualitzarSelectorProductes()"> Mildiu</label>
+      <label class="checkbox-label"><input type="checkbox" id="cb-botritis" onchange="actualitzarSelectorProductes()"> Botritis</label>
+      <label class="checkbox-label"><input type="checkbox" id="cb-blackrot" onchange="actualitzarSelectorProductes()" checked disabled> Black Rot</label>
+    </div>
+
+    <label style="margin-top:12px; display:flex; align-items:center; flex-wrap:wrap;">
+      Producte aplicat
+      <span id="info-eco" style="display:none; color:var(--verd); font-size:12px; font-weight:bold; margin-left:8px; background:rgba(34,197,94,0.1); padding:2px 6px; border-radius:4px;">🍃 Ecològic</span>
+      <span id="info-no-eco" style="display:none; color:var(--vermell); font-size:12px; font-weight:bold; margin-left:8px; background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px;">🧪 Convencional</span>
+      <span id="info-dies" style="display:none; color:var(--muted); font-size:12px; margin-left:8px;"></span>
+    </label>
+    <select id="inp-producte" onchange="actualitzarInfoProducte()">
+       <option value="">-- Selecciona les malalties primer --</option>
+    </select>
+    
+    <div id="div-altre-eco" style="display:none; margin-top:8px;">
+       <label class="checkbox-label" style="font-size:13px; color:var(--text);">
+         <input type="checkbox" id="inp-altre-eco" onchange="actualitzarInfoProducte()"> Aquest producte és ecològic?
+       </label>
+    </div>
+
+    <label style="margin-top:12px;">Dosi</label>
+    <input type="text" id="inp-dosi" placeholder="3 kg/ha, 2 L/ha...">
+
+    <label style="margin-top:12px;">Notes (opcional)</label>
+    <textarea id="inp-notes" placeholder="Condicions, observacions..."></textarea>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="afegirTractament()">Guardar tractament</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Historial de tractaments</div>
+  <div id="llista-tractaments"><div class="empty">Carregant...</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+</main>
+<footer>
+  Son Nadal (RC0039468) · 39.5146, 3.15405 ·
+  Actualitzat: 02/07/2026 19:45 ·
+  Oïdi: Gubler (1995) · Mildiu: Model EPI + regla 3×10 (Goidanich)
+</footer>
+<script>
+const MALALTIA_FILTRE = 'blackrot';
+
+const FITXER = 'tractaments.json';
+document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+document.getElementById('gh-repo').value  = localStorage.getItem('gh_repo')  || '';
+const ara = new Date();
+ara.setMinutes(ara.getMinutes() - ara.getTimezoneOffset());
+document.getElementById('inp-data').value = ara.toISOString().slice(0,16);
+function token() { return localStorage.getItem('gh_token') || ''; }
+function repo()  { return localStorage.getItem('gh_repo')  || ''; }
+function toast(msg, ok=true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+async function llegirFitxer() {
+  if (!token() || !repo()) return { tractaments: [] };
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${repo()}/contents/${FITXER}`,
+      { headers: { Authorization: `Bearer ${token()}`, Accept: 'application/vnd.github+json' } });
+    if (r.status === 404) return { tractaments: [] };
+    const data = await r.json();
+    const contingut = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    contingut._sha = data.sha;
+    return contingut;
+  } catch(e) {
+    toast('Error llegint tractaments.json: ' + e.message, false);
+    return { tractaments: [] };
+  }
+}
+async function guardarFitxer(dades) {
+  if (!token() || !repo()) { toast('Configura el token i el repositori primer', false); return false; }
+  const sha = dades._sha; delete dades._sha;
+  dades._instruccions = "Afegeix un registre per cada tractament.";
+  const cos = { message: `tractament: ${new Date().toISOString().slice(0,10)}`,
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(dades, null, 2)))) };
+  if (sha) cos.sha = sha;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo()}/contents/${FITXER}`,
+      { method:'PUT', headers:{ Authorization:`Bearer ${token()}`,
+        Accept:'application/vnd.github+json','Content-Type':'application/json'},
+        body:JSON.stringify(cos) });
+    return r.ok;
+  } catch(e) { toast('Error guardant: ' + e.message, false); return false; }
+}
+const PRODUCTES_DB = {
+  'sofre_pols': {nom: 'Sofre en pols', eco: true, dies: 7, malalties: ['oidio']},
+  'sofre_mullable': {nom: 'Sofre mullable 80%', eco: true, dies: 10, malalties: ['oidio']},
+  'triazol': {nom: 'Triazol (ex. Difenoconazol, Miclobutanil)', eco: false, dies: 14, malalties: ['oidio', 'blackrot']},
+  'caldo_bordeles': {nom: 'Caldo Bordelès / Sals de coure', eco: true, dies: 10, malalties: ['mildiu', 'blackrot']},
+  'metalaxil': {nom: 'Sistèmic (Metalaxil + Mancozeb)', eco: false, dies: 14, malalties: ['mildiu']},
+  'cimoxanil': {nom: 'Penetrant (Cimoxanil)', eco: false, dies: 10, malalties: ['mildiu']},
+  'bacillus': {nom: 'Bacillus subtilis', eco: true, dies: 7, malalties: ['botritis']},
+  'switch': {nom: 'Switch (Ciprodinil + Fludioxonil)', eco: false, dies: 14, malalties: ['botritis']},
+  'altre': {nom: 'Altre producte (Introduir a notes)', eco: false, dies: 10, malalties: ['oidio', 'mildiu', 'botritis', 'blackrot']}
+};
+
+function actualitzarSelectorProductes() {
+  const malaltiesSelec = [];
+  ['oidio','mildiu','botritis','blackrot'].forEach(m => {
+    const cb = document.getElementById('cb-' + m);
+    if (cb && cb.checked) malaltiesSelec.push(m);
+  });
+  
+  const sel = document.getElementById('inp-producte');
+  sel.innerHTML = '<option value="">-- Selecciona un producte --</option>';
+  
+  if (malaltiesSelec.length === 0) {
+    sel.innerHTML = '<option value="">-- Selecciona les malalties primer --</option>';
+    actualitzarInfoProducte();
+    return;
+  }
+  
+  Object.keys(PRODUCTES_DB).forEach(k => {
+    const p = PRODUCTES_DB[k];
+    const faMatch = malaltiesSelec.some(m => p.malalties.includes(m));
+    if (faMatch) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = p.nom;
+      sel.appendChild(opt);
+    }
+  });
+  actualitzarInfoProducte();
+}
+
+function actualitzarInfoProducte() {
+  const sel = document.getElementById('inp-producte');
+  const ecoBadge = document.getElementById('info-eco');
+  const noEcoBadge = document.getElementById('info-no-eco');
+  const diesLabel = document.getElementById('info-dies');
+  const divAltre = document.getElementById('div-altre-eco');
+  
+  if (!sel.value || sel.value === '') {
+    ecoBadge.style.display = 'none';
+    noEcoBadge.style.display = 'none';
+    diesLabel.style.display = 'none';
+    divAltre.style.display = 'none';
+    return;
+  }
+  
+  const p = PRODUCTES_DB[sel.value];
+  if (p) {
+    let isEco = p.eco;
+    
+    if (sel.value === 'altre') {
+      divAltre.style.display = 'block';
+      isEco = document.getElementById('inp-altre-eco').checked;
+    } else {
+      divAltre.style.display = 'none';
+    }
+    
+    if (isEco) {
+      ecoBadge.style.display = 'inline';
+      noEcoBadge.style.display = 'none';
+    } else {
+      ecoBadge.style.display = 'none';
+      noEcoBadge.style.display = 'inline';
+    }
+    diesLabel.style.display = 'inline';
+    diesLabel.textContent = `Protecció est.: ${p.dies} dies`;
+  }
+}
+
+async function afegirTractament() {
+  const data = document.getElementById('inp-data').value;
+  const prodKey = document.getElementById('inp-producte').value;
+  const dosi = document.getElementById('inp-dosi').value.trim();
+  const notes = document.getElementById('inp-notes').value.trim();
+  
+  if (!data || !prodKey) { toast('La data i el producte són obligatoris', false); return; }
+  
+  const p = PRODUCTES_DB[prodKey];
+  let isEco = p.eco;
+  if (prodKey === 'altre') {
+    isEco = document.getElementById('inp-altre-eco').checked;
+  }
+  
+  const malalties = [];
+  ['oidio','mildiu','botritis','blackrot'].forEach(m => {
+    const cb = document.getElementById('cb-' + m);
+    if (cb && cb.checked) malalties.push(m);
+  });
+  
+  if (malalties.length === 0) { toast('Selecciona almenys una malaltia', false); return; }
+  
+  const nou = { 
+    data: data, 
+    producte: p.nom, 
+    malalties: malalties, 
+    dosi: dosi, 
+    notes: notes,
+    ecologic: isEco,
+    dies_proteccio: p.dies
+  };
+  
+  const dades = await llegirFitxer();
+  dades.tractaments = dades.tractaments || [];
+  dades.tractaments.push(nou);
+  dades.tractaments.sort((a,b) => a.data.localeCompare(b.data));
+  const ok = await guardarFitxer(dades);
+  if (ok) {
+    toast("Tractament guardat!");
+    document.getElementById('inp-producte').value = '';
+    document.getElementById('inp-dosi').value = '';
+    document.getElementById('inp-notes').value = '';
+    actualitzarInfoProducte();
+    renderLlista(dades.tractaments);
+    setTimeout(() => window.location.reload(), 800);
+  } else { toast("No s'ha pogut guardar. Comprova el token i el repositori.", false); }
+}
+
+async function eliminarTractament(idx) {
+  if (!confirm('Eliminar aquest tractament?')) return;
+  const dades = await llegirFitxer();
+  dades.tractaments.splice(idx, 1);
+  const ok = await guardarFitxer(dades);
+  if (ok) { 
+    toast('Tractament eliminat'); 
+    renderLlista(dades.tractaments); 
+    setTimeout(() => window.location.reload(), 800);
+  }
+}
+function renderLlista(tractaments) {
+  const el = document.getElementById('llista-tractaments');
+  const filtrats = tractaments.filter(t => t.malalties && t.malalties.includes(MALALTIA_FILTRE));
+  if (!filtrats.length) {
+    el.innerHTML = '<div class="empty">Cap tractament registrat per a aquesta malaltia</div>'; return;
+  }
+  const origIndices = [];
+  tractaments.forEach((t, i) => {
+    if (t.malalties && t.malalties.includes(MALALTIA_FILTRE)) origIndices.push(i);
+  });
+  const bc = {oidio:'t-badge-oidio',mildiu:'t-badge-mildiu',botritis:'t-badge-botritis',blackrot:'t-badge-blackrot'};
+  el.innerHTML = [...filtrats].reverse().map((t, i) => {
+    const idxReal = origIndices[filtrats.length - 1 - i];
+    const d = new Date(t.data).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const badges = (t.malalties||[]).map(m => `<span class="t-badge ${bc[m]||''}">${m}</span>`).join('');
+    let ecoBadge = "";
+    if (t.ecologic === true) {
+      ecoBadge = '<span class="t-badge" style="background:rgba(34,197,94,0.15);color:var(--verd);">🍃 Eco</span>';
+    } else if (t.ecologic === false) {
+      ecoBadge = '<span class="t-badge" style="background:rgba(239,68,68,0.15);color:var(--vermell);">🧪 Convencional</span>';
+    }
+    const diesTxt = t.dies_proteccio ? ` (${t.dies_proteccio} dies)` : '';
+    return `<div class="tractament-item"><div>
+      <div class="t-data">${d} — ${t.producte}${diesTxt} ${ecoBadge}</div>
+      <div class="t-producte">${t.dosi||''}${t.notes ? ' · '+t.notes : ''}</div>
+      <div class="t-badges">${badges}</div></div>
+      <button class="btn btn-danger" onclick="eliminarTractament(${idxReal})">Eliminar</button></div>`;
+  }).join('');
+}
+(async () => {
+  const dades = await llegirFitxer();
+  renderLlista(dades.tractaments);
+  if (token() && repo()) document.getElementById('config-section').style.display = 'none';
+})();
+
+</script>
+</body>
+</html>

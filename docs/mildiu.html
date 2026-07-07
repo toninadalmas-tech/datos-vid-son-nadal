@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vinya Son Nadal · Felanitx</title>
+  <title>Mildiu · Son Nadal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -194,9 +194,9 @@ footer{color:var(--muted);font-size:11px;text-align:center;
 <nav class="navbar">
   <a href="index.html" class="nav-brand">🍇 Son Nadal</a>
   <div class="nav-links">
-    <a href="index.html" class="nav-link active">Inici</a>
+    <a href="index.html" class="nav-link">Inici</a>
     <a href="oidi.html" class="nav-link">Oïdi</a>
-    <a href="mildiu.html" class="nav-link">Mildiu</a>
+    <a href="mildiu.html" class="nav-link active">Mildiu</a>
     <a href="botritis.html" class="nav-link">Botritis</a>
     <a href="blackrot.html" class="nav-link">Black Rot</a>
   </div>
@@ -205,54 +205,40 @@ footer{color:var(--muted);font-size:11px;text-align:center;
 
 <div class="page-header">
   <div>
-    <h1>Vinya Son Nadal</h1>
-    <div class="sub">Felanitx, Mallorca · Monitoratge fitosanitari · Últims 14 dies</div>
+    <h1>Mildiu</h1>
+    <div class="sub">Plasmopara viticola · Model EPI + regla 3×10 · 02/07/2026 19:00</div>
   </div>
-  <div class="sub" style="text-align:right">02/07/2026 19:00</div>
+  <span class="badge" style="color:#6b7280;border-color:#6b7280">● INACTIU</span>
 </div>
 
 
-<div class="disease-grid">
-  <a href="oidi.html" class="disease-card">
-    <span class="icon">🍂</span>
-    <div class="name">Oïdi</div>
-    <div class="agent">Erysiphe necator</div>
-    <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(124,58,237,.15);color:#7c3aed">● MOLT ALT</span>
-    </div>
-    <div class="desc">Models Gubler + Kast — Risc climàtic ajustat per fase fenològica (resistència ontogènica).</div>
-    <span class="arrow">→</span>
-  </a>
-  <a href="mildiu.html" class="disease-card">
-    <span class="icon">💧</span>
-    <div class="name">Mildiu</div>
-    <div class="agent">Plasmopara viticola</div>
-    <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#6b7280">● INACTIU</span>
-    </div>
-    <div class="desc">Model EPI + regla 3×10 de Goidanich. Graus-dia d'incubació.</div>
-    <span class="arrow">→</span>
-  </a>
-  <a href="botritis.html" class="disease-card">
-    <span class="icon">🍇</span>
-    <div class="name">Botritis</div>
-    <div class="agent">Botrytis cinerea</div>
-    <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#6b7280">— SENSE MODEL</span>
-    </div>
-    <div class="desc">Podridura gris. Factors: HR alta, pluja a maduració, ferides.</div>
-    <span class="arrow">→</span>
-  </a>
-  <a href="blackrot.html" class="disease-card">
-    <span class="icon">⚫</span>
-    <div class="name">Black Rot</div>
-    <div class="agent">Guignardia bidwellii</div>
-    <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#6b7280">— SENSE MODEL</span>
-    </div>
-    <div class="desc">Podridura negra. Factors: pluja + T 20-30°C, fulles infectades.</div>
-    <span class="arrow">→</span>
-  </a>
+<div class="recom-box">
+  <div class="recom-icon">🛡️</div>
+  <div class="recom-content">
+    <h4>Risc baix / en vigilància</h4>
+    <p>Les condicions actuals no presenten un risc immediat d'infecció de mildiu. Vigila l'evolució de les previsions de pluja (>10mm) i temperatura (>10°C).</p>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Risc mildiu</div>
+    <div class="kpi-val" style="font-size:18px;color:#6b7280">INACTIU</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Pluja acumulada 10d</div>
+    <div class="kpi-val">0.0<span class="kpi-unit">mm</span></div>
+    <div class="kpi-sub">Llindar: 10 mm</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Dies fins a símptomes</div>
+    <div class="kpi-val">—</div>
+    <div class="kpi-sub">Si hi ha infecció activa</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Temperatura</div>
+    <div class="kpi-val">29.3<span class="kpi-unit">°C</span></div>
+  </div>
 </div>
 
 <div class="filter-bar">
@@ -267,9 +253,87 @@ footer{color:var(--muted);font-size:11px;text-align:center;
   <canvas id="chart-th"></canvas>
 </div>
 <div class="chart-card">
+  <div class="chart-title">Risc mildiu (0=inactiu → 4=alt)</div>
+  <canvas id="chart-mildiu"></canvas>
+  <div class="llindars" style="margin-top:8px">
+    <span class="ll" style="color:#6b7280;border-color:#6b7280">Inactiu</span>
+    <span class="ll" style="color:#f59e0b;border-color:#f59e0b">Vigilància</span>
+    <span class="ll" style="color:#f97316;border-color:#f97316">Primari</span>
+    <span class="ll" style="color:#ef4444;border-color:#ef4444">Secundari</span>
+    <span class="ll" style="color:#7c3aed;border-color:#7c3aed">Alt</span>
+  </div>
+</div>
+<div class="chart-card">
   <div class="chart-title">Precipitació (mm)</div>
   <canvas id="chart-pluja"></canvas>
 </div>
+
+
+<div class="section-title">Tractaments</div>
+
+<div class="config-box" id="config-section">
+  <strong style="color:var(--text)">Configuració GitHub (una sola vegada)</strong><br>
+  Per guardar els tractaments al repositori necessites un token d'accés.<br><br>
+  Token GitHub (permís <code>contents:write</code>):
+  <input type="password" id="gh-token" placeholder="ghp_..."
+         oninput="localStorage.setItem('gh_token',this.value)">
+  Repositori (usuari/nom):
+  <input type="text" id="gh-repo" placeholder="usuari/repo"
+         oninput="localStorage.setItem('gh_repo',this.value)">
+  <div style="margin-top:8px;font-size:11px">
+    El token es guarda localment al navegador.
+    GitHub → Settings → Developer settings → Personal access tokens → Fine-grained →
+    <code>Contents: Read and write</code>.
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title">Registrar tractament</div>
+  <div style="margin-top:16px;">
+    <label>Data i hora del tractament</label>
+    <input type="datetime-local" id="inp-data">
+    
+    <label style="margin-top:12px;">Malalties tractades</label>
+    <div class="checkbox-group">
+        <label class="checkbox-label"><input type="checkbox" id="cb-oidio" onchange="actualitzarSelectorProductes()"> Oïdi</label>
+      <label class="checkbox-label"><input type="checkbox" id="cb-mildiu" onchange="actualitzarSelectorProductes()" checked disabled> Mildiu</label>
+      <label class="checkbox-label"><input type="checkbox" id="cb-botritis" onchange="actualitzarSelectorProductes()"> Botritis</label>
+      <label class="checkbox-label"><input type="checkbox" id="cb-blackrot" onchange="actualitzarSelectorProductes()"> Black Rot</label>
+    </div>
+
+    <label style="margin-top:12px; display:flex; align-items:center; flex-wrap:wrap;">
+      Producte aplicat
+      <span id="info-eco" style="display:none; color:var(--verd); font-size:12px; font-weight:bold; margin-left:8px; background:rgba(34,197,94,0.1); padding:2px 6px; border-radius:4px;">🍃 Ecològic</span>
+      <span id="info-no-eco" style="display:none; color:var(--vermell); font-size:12px; font-weight:bold; margin-left:8px; background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px;">🧪 Convencional</span>
+      <span id="info-dies" style="display:none; color:var(--muted); font-size:12px; margin-left:8px;"></span>
+    </label>
+    <select id="inp-producte" onchange="actualitzarInfoProducte()">
+       <option value="">-- Selecciona les malalties primer --</option>
+    </select>
+    
+    <div id="div-altre-eco" style="display:none; margin-top:8px;">
+       <label class="checkbox-label" style="font-size:13px; color:var(--text);">
+         <input type="checkbox" id="inp-altre-eco" onchange="actualitzarInfoProducte()"> Aquest producte és ecològic?
+       </label>
+    </div>
+
+    <label style="margin-top:12px;">Dosi</label>
+    <input type="text" id="inp-dosi" placeholder="3 kg/ha, 2 L/ha...">
+
+    <label style="margin-top:12px;">Notes (opcional)</label>
+    <textarea id="inp-notes" placeholder="Condicions, observacions..."></textarea>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="afegirTractament()">Guardar tractament</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Historial de tractaments</div>
+  <div id="llista-tractaments"><div class="empty">Carregant...</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 </main>
 <footer>
@@ -505,6 +569,7 @@ function buildCharts(start) {
   Object.values(window._charts || {}).forEach(c => c.destroy());
   window._charts = {
     th: createTHChart(L, ALL.temps.slice(start), ALL.humitat.slice(start)),
+    mildiu: createRiscMildiuChart(L, ALL.risc_mildiu_data.slice(start)),
     pluja: createPlujaChart(L, ALL.pluja.slice(start))
   };
 }
@@ -520,6 +585,227 @@ function setFilter(range) {
   document.querySelectorAll('.filter-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.range === range));
 }
+
+const MALALTIA_FILTRE = 'mildiu';
+
+const FITXER = 'tractaments.json';
+document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+document.getElementById('gh-repo').value  = localStorage.getItem('gh_repo')  || '';
+const ara = new Date();
+ara.setMinutes(ara.getMinutes() - ara.getTimezoneOffset());
+document.getElementById('inp-data').value = ara.toISOString().slice(0,16);
+function token() { return localStorage.getItem('gh_token') || ''; }
+function repo()  { return localStorage.getItem('gh_repo')  || ''; }
+function toast(msg, ok=true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+async function llegirFitxer() {
+  if (!token() || !repo()) return { tractaments: [] };
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${repo()}/contents/${FITXER}`,
+      { headers: { Authorization: `Bearer ${token()}`, Accept: 'application/vnd.github+json' } });
+    if (r.status === 404) return { tractaments: [] };
+    const data = await r.json();
+    const contingut = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    contingut._sha = data.sha;
+    return contingut;
+  } catch(e) {
+    toast('Error llegint tractaments.json: ' + e.message, false);
+    return { tractaments: [] };
+  }
+}
+async function guardarFitxer(dades) {
+  if (!token() || !repo()) { toast('Configura el token i el repositori primer', false); return false; }
+  const sha = dades._sha; delete dades._sha;
+  dades._instruccions = "Afegeix un registre per cada tractament.";
+  const cos = { message: `tractament: ${new Date().toISOString().slice(0,10)}`,
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(dades, null, 2)))) };
+  if (sha) cos.sha = sha;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo()}/contents/${FITXER}`,
+      { method:'PUT', headers:{ Authorization:`Bearer ${token()}`,
+        Accept:'application/vnd.github+json','Content-Type':'application/json'},
+        body:JSON.stringify(cos) });
+    return r.ok;
+  } catch(e) { toast('Error guardant: ' + e.message, false); return false; }
+}
+const PRODUCTES_DB = {
+  'sofre_pols': {nom: 'Sofre en pols', eco: true, dies: 7, malalties: ['oidio']},
+  'sofre_mullable': {nom: 'Sofre mullable 80%', eco: true, dies: 10, malalties: ['oidio']},
+  'triazol': {nom: 'Triazol (ex. Difenoconazol, Miclobutanil)', eco: false, dies: 14, malalties: ['oidio', 'blackrot']},
+  'caldo_bordeles': {nom: 'Caldo Bordelès / Sals de coure', eco: true, dies: 10, malalties: ['mildiu', 'blackrot']},
+  'metalaxil': {nom: 'Sistèmic (Metalaxil + Mancozeb)', eco: false, dies: 14, malalties: ['mildiu']},
+  'cimoxanil': {nom: 'Penetrant (Cimoxanil)', eco: false, dies: 10, malalties: ['mildiu']},
+  'bacillus': {nom: 'Bacillus subtilis', eco: true, dies: 7, malalties: ['botritis']},
+  'switch': {nom: 'Switch (Ciprodinil + Fludioxonil)', eco: false, dies: 14, malalties: ['botritis']},
+  'altre': {nom: 'Altre producte (Introduir a notes)', eco: false, dies: 10, malalties: ['oidio', 'mildiu', 'botritis', 'blackrot']}
+};
+
+function actualitzarSelectorProductes() {
+  const malaltiesSelec = [];
+  ['oidio','mildiu','botritis','blackrot'].forEach(m => {
+    const cb = document.getElementById('cb-' + m);
+    if (cb && cb.checked) malaltiesSelec.push(m);
+  });
+  
+  const sel = document.getElementById('inp-producte');
+  sel.innerHTML = '<option value="">-- Selecciona un producte --</option>';
+  
+  if (malaltiesSelec.length === 0) {
+    sel.innerHTML = '<option value="">-- Selecciona les malalties primer --</option>';
+    actualitzarInfoProducte();
+    return;
+  }
+  
+  Object.keys(PRODUCTES_DB).forEach(k => {
+    const p = PRODUCTES_DB[k];
+    const faMatch = malaltiesSelec.some(m => p.malalties.includes(m));
+    if (faMatch) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = p.nom;
+      sel.appendChild(opt);
+    }
+  });
+  actualitzarInfoProducte();
+}
+
+function actualitzarInfoProducte() {
+  const sel = document.getElementById('inp-producte');
+  const ecoBadge = document.getElementById('info-eco');
+  const noEcoBadge = document.getElementById('info-no-eco');
+  const diesLabel = document.getElementById('info-dies');
+  const divAltre = document.getElementById('div-altre-eco');
+  
+  if (!sel.value || sel.value === '') {
+    ecoBadge.style.display = 'none';
+    noEcoBadge.style.display = 'none';
+    diesLabel.style.display = 'none';
+    divAltre.style.display = 'none';
+    return;
+  }
+  
+  const p = PRODUCTES_DB[sel.value];
+  if (p) {
+    let isEco = p.eco;
+    
+    if (sel.value === 'altre') {
+      divAltre.style.display = 'block';
+      isEco = document.getElementById('inp-altre-eco').checked;
+    } else {
+      divAltre.style.display = 'none';
+    }
+    
+    if (isEco) {
+      ecoBadge.style.display = 'inline';
+      noEcoBadge.style.display = 'none';
+    } else {
+      ecoBadge.style.display = 'none';
+      noEcoBadge.style.display = 'inline';
+    }
+    diesLabel.style.display = 'inline';
+    diesLabel.textContent = `Protecció est.: ${p.dies} dies`;
+  }
+}
+
+async function afegirTractament() {
+  const data = document.getElementById('inp-data').value;
+  const prodKey = document.getElementById('inp-producte').value;
+  const dosi = document.getElementById('inp-dosi').value.trim();
+  const notes = document.getElementById('inp-notes').value.trim();
+  
+  if (!data || !prodKey) { toast('La data i el producte són obligatoris', false); return; }
+  
+  const p = PRODUCTES_DB[prodKey];
+  let isEco = p.eco;
+  if (prodKey === 'altre') {
+    isEco = document.getElementById('inp-altre-eco').checked;
+  }
+  
+  const malalties = [];
+  ['oidio','mildiu','botritis','blackrot'].forEach(m => {
+    const cb = document.getElementById('cb-' + m);
+    if (cb && cb.checked) malalties.push(m);
+  });
+  
+  if (malalties.length === 0) { toast('Selecciona almenys una malaltia', false); return; }
+  
+  const nou = { 
+    data: data, 
+    producte: p.nom, 
+    malalties: malalties, 
+    dosi: dosi, 
+    notes: notes,
+    ecologic: isEco,
+    dies_proteccio: p.dies
+  };
+  
+  const dades = await llegirFitxer();
+  dades.tractaments = dades.tractaments || [];
+  dades.tractaments.push(nou);
+  dades.tractaments.sort((a,b) => a.data.localeCompare(b.data));
+  const ok = await guardarFitxer(dades);
+  if (ok) {
+    toast("Tractament guardat!");
+    document.getElementById('inp-producte').value = '';
+    document.getElementById('inp-dosi').value = '';
+    document.getElementById('inp-notes').value = '';
+    actualitzarInfoProducte();
+    renderLlista(dades.tractaments);
+    setTimeout(() => window.location.reload(), 800);
+  } else { toast("No s'ha pogut guardar. Comprova el token i el repositori.", false); }
+}
+
+async function eliminarTractament(idx) {
+  if (!confirm('Eliminar aquest tractament?')) return;
+  const dades = await llegirFitxer();
+  dades.tractaments.splice(idx, 1);
+  const ok = await guardarFitxer(dades);
+  if (ok) { 
+    toast('Tractament eliminat'); 
+    renderLlista(dades.tractaments); 
+    setTimeout(() => window.location.reload(), 800);
+  }
+}
+function renderLlista(tractaments) {
+  const el = document.getElementById('llista-tractaments');
+  const filtrats = tractaments.filter(t => t.malalties && t.malalties.includes(MALALTIA_FILTRE));
+  if (!filtrats.length) {
+    el.innerHTML = '<div class="empty">Cap tractament registrat per a aquesta malaltia</div>'; return;
+  }
+  const origIndices = [];
+  tractaments.forEach((t, i) => {
+    if (t.malalties && t.malalties.includes(MALALTIA_FILTRE)) origIndices.push(i);
+  });
+  const bc = {oidio:'t-badge-oidio',mildiu:'t-badge-mildiu',botritis:'t-badge-botritis',blackrot:'t-badge-blackrot'};
+  el.innerHTML = [...filtrats].reverse().map((t, i) => {
+    const idxReal = origIndices[filtrats.length - 1 - i];
+    const d = new Date(t.data).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const badges = (t.malalties||[]).map(m => `<span class="t-badge ${bc[m]||''}">${m}</span>`).join('');
+    let ecoBadge = "";
+    if (t.ecologic === true) {
+      ecoBadge = '<span class="t-badge" style="background:rgba(34,197,94,0.15);color:var(--verd);">🍃 Eco</span>';
+    } else if (t.ecologic === false) {
+      ecoBadge = '<span class="t-badge" style="background:rgba(239,68,68,0.15);color:var(--vermell);">🧪 Convencional</span>';
+    }
+    const diesTxt = t.dies_proteccio ? ` (${t.dies_proteccio} dies)` : '';
+    return `<div class="tractament-item"><div>
+      <div class="t-data">${d} — ${t.producte}${diesTxt} ${ecoBadge}</div>
+      <div class="t-producte">${t.dosi||''}${t.notes ? ' · '+t.notes : ''}</div>
+      <div class="t-badges">${badges}</div></div>
+      <button class="btn btn-danger" onclick="eliminarTractament(${idxReal})">Eliminar</button></div>`;
+  }).join('');
+}
+(async () => {
+  const dades = await llegirFitxer();
+  renderLlista(dades.tractaments);
+  if (token() && repo()) document.getElementById('config-section').style.display = 'none';
+})();
 
 setFilter('7d');
 </script>
