@@ -18,6 +18,28 @@ import numpy as np
 from datetime import datetime, timedelta
 import os, re, json
 import urllib3
+from datetime import datetime, timedelta
+
+def carregar_tractaments():
+    try:
+        with open("tractaments.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("tractaments", [])
+    except Exception:
+        return []
+
+def obtenir_periodes_proteccio(tractaments, malaltia="oidio", dies_proteccio=10):
+    periodes = []
+    for t in tractaments:
+        if malaltia in t.get("malalties", []):
+            try:
+                # La data sol venir com "YYYY-MM-DDTHH:MM"
+                inici = pd.to_datetime(t["data"])
+                fi = inici + timedelta(days=dies_proteccio)
+                periodes.append((inici, fi))
+            except Exception:
+                pass
+    return periodes
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -66,7 +88,7 @@ def descarregar_sensor(nom: str, sensor: str) -> pd.DataFrame | None:
                   verify=False, timeout=20)
         r.raise_for_status()
     except requests.RequestException as e:
-        print(f"  ✗ {nom}: error connexió — {e}")
+        print(f"  [ERROR] {nom}: error connexió - {e}")
         return None
 
     # Extreu el JSON de Google Charts de l'HTML
@@ -75,14 +97,14 @@ def descarregar_sensor(nom: str, sensor: str) -> pd.DataFrame | None:
         r.text, re.DOTALL
     )
     if not match:
-        print(f"  ✗ {nom}: no s'ha trobat jsonDataWeatherStationLast24Chart a l'HTML")
+        print(f"  [ERROR] {nom}: no s'ha trobat jsonDataWeatherStationLast24Chart a l'HTML")
         print(f"     Comprova que la URL retorna la gràfica: {url_chart}")
         return None
 
     try:
         data = json.loads(match.group(1))
     except json.JSONDecodeError as e:
-        print(f"  ✗ {nom}: error parsejant JSON — {e}")
+        print(f"  [ERROR] {nom}: error parsejant JSON - {e}")
         return None
 
     # Converteix les files del JSON a DataFrame
@@ -97,11 +119,11 @@ def descarregar_sensor(nom: str, sensor: str) -> pd.DataFrame | None:
             pass
 
     if not files:
-        print(f"  ✗ {nom}: JSON buit o format inesperat")
+        print(f"  [ERROR] {nom}: JSON buit o format inesperat")
         return None
 
     df = pd.DataFrame(files)
-    print(f"  ✓ {nom}: {len(df)} mesures")
+    print(f"  [OK] {nom}: {len(df)} mesures")
     return df
 
 
@@ -146,7 +168,7 @@ def obtenir_dades() -> pd.DataFrame | None:
         df_agr = df_agr.drop(columns=["ts30"])
 
         dfs[nom] = df_agr
-        print(f"     → {len(df_agr)} intervals de 30 min")
+        print(f"     -> {len(df_agr)} intervals de 30 min")
 
     if not dfs:
         return None
@@ -157,7 +179,7 @@ def obtenir_dades() -> pd.DataFrame | None:
         df_final = df_s if df_final is None else pd.merge(df_final, df_s, on="timestamp", how="inner")
 
     df_final = df_final.sort_values("timestamp").reset_index(drop=True)
-    print(f"\n  → Total: {len(df_final)} registres combinats")
+    print(f"\n  -> Total: {len(df_final)} registres combinats")
     return df_final
 
 
@@ -226,11 +248,15 @@ def calcular_gubler(df_tot: pd.DataFrame) -> pd.DataFrame:
 
     acumulat = 0.0
     calor_cnt = 0  # comptador de intervals consecutius T > 35°C
+    
+    tractaments = carregar_tractaments()
+    periodes_proteccio = obtenir_periodes_proteccio(tractaments, "oidio", 10)
 
     for i in range(len(df)):
         t  = t_col.iloc[i]
         hr = hr_col.iloc[i]
         p  = p_col.iloc[i]
+        ts = df["ts"].iloc[i]
 
         # Comptador de calor extrema
         if not pd.isna(t) and t > 35:
@@ -246,6 +272,10 @@ def calcular_gubler(df_tot: pd.DataFrame) -> pd.DataFrame:
 
         ui = ui_horaria(t, hr)
         acumulat += ui
+        
+        # El model de Gubler té un límit màxim teòric (ex: 150), no s'acumula a l'infinit
+        if acumulat > 150.0:
+            acumulat = 150.0
 
         ui_h[i]   = ui
         ui_acc[i] = acumulat
@@ -303,13 +333,13 @@ def actualitzar_historial(df_nou: pd.DataFrame) -> pd.DataFrame:
     df_tot.to_csv(CSV_HISTORIAL, index=False)
 
     registres_nous = len(df_nou)
-    print(f"  → {registres_nous} registres nous | {len(df_tot)} totals → {CSV_HISTORIAL}")
+    print(f"  -> {registres_nous} registres nous | {len(df_tot)} totals -> {CSV_HISTORIAL}")
     return df_tot
 
 
 # ── Resum ─────────────────────────────────────────────────────────────────────
 def resum(df: pd.DataFrame):
-    print(f"\n{'─'*50}")
+    print(f"\n{'-'*50}")
     ult24 = df.tail(48)  # últimes 24h (registres de 30 min)
     print(f"  Últimes 24h  ({len(ult24)} registres)")
     for col, nom, unit in [
@@ -328,25 +358,25 @@ def resum(df: pd.DataFrame):
         ui_24h    = ult24["ui_horaria"].sum() if "ui_horaria" in ult24.columns else 0
         risc      = df["risc_gubler"].iloc[-1] if "risc_gubler" in df.columns else "?"
         reinicios = int(df["reinici_ui"].sum()) if "reinici_ui" in df.columns else 0
-        print(f"\n  ── Model Gubler ──────────────────────────")
+        print(f"\n  -- Model Gubler --------------------------")
         print(f"  UI acumulades total : {ui_actual:.0f}")
         print(f"  UI últimes 24h      : {ui_24h:.0f}")
         print(f"  Risc actual         : {risc.upper()}")
         print(f"  Reinicios (pluja/T) : {reinicios}")
-        print(f"  Llindars → moderat≥50  alt≥100  molt alt≥150")
-    print(f"{'─'*50}\n")
+        print(f"  Llindars -> moderat>=50  alt>=100  molt alt>=150")
+    print(f"{'-'*50}\n")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     print(f"\n[{datetime.now():%Y-%m-%d %H:%M}] Col·lector Son Nadal iniciat")
-    print("─" * 50)
-    print("→ Descarregant sensors des de Google Charts JSON...")
+    print("-" * 50)
+    print("-> Descarregant sensors des de Google Charts JSON...")
 
     df_nou = obtenir_dades()
 
     if df_nou is None or df_nou.empty:
-        print("\n⚠ No s'han pogut obtenir dades.")
+        print("\n[WARNING] No s'han pogut obtenir dades.")
         raise SystemExit(1)
 
     df_historial = actualitzar_historial(df_nou)
