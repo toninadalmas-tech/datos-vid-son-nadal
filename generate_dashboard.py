@@ -1097,6 +1097,10 @@ def generar_oidi(df: pd.DataFrame) -> str:
 </div>
 """)
 
+    # Condicions i Timeline
+    parts.append(generar_condicions("oidi"))
+    parts.append(generar_timeline("oidi"))
+
     # Tractaments
     parts.append(generar_tractaments_section("oidio"))
 
@@ -1220,6 +1224,10 @@ def generar_mildiu(df: pd.DataFrame) -> str:
   <canvas id="chart-pluja"></canvas>
 </div>
 """)
+
+    # Condicions i Timeline
+    parts.append(generar_condicions("mildiu"))
+    parts.append(generar_timeline("mildiu"))
 
     # Tractaments
     parts.append(generar_tractaments_section("mildiu"))
