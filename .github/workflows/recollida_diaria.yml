@@ -35,6 +35,9 @@ jobs:
       - name: Executa el model de mildiu
         run: python mildiu_collector.py
 
+      - name: Descarrega dades d'Open-Meteo
+        run: python fetch_openmeteo.py
+
       - name: Genera el dashboard HTML
         run: python generate_dashboard.py
 
@@ -45,19 +48,3 @@ jobs:
           git add data/historial.csv data/mildiu_historial.csv docs/
           git diff --cached --quiet || git commit -m "dades: $(date +'%Y-%m-%d') actualitzat"
           git push
-
-      - name: Publica a Netlify
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: |
-          # Instal·la el CLI de Netlify
-          npm install -g netlify-cli
-
-          # Publica la carpeta docs/ al site existent
-          netlify deploy \
-            --dir=docs \
-            --site=$NETLIFY_SITE_ID \
-            --auth=$NETLIFY_AUTH_TOKEN \
-            --prod \
-            --message="$(date +'%Y-%m-%d') actualitzat"
