@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import os, re, json
 import urllib3
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 def carregar_tractaments():
     try:
@@ -133,7 +134,7 @@ def obtenir_dades() -> pd.DataFrame | None:
     Descarrega els tres sensors, assigna timestamps complets
     (les hores del JSON no tenen data), arrodoneix a 30 min i combina.
     """
-    ara = datetime.now()
+    ara = datetime.now(ZoneInfo('Europe/Madrid')).replace(tzinfo=None)
     ahir = ara - timedelta(hours=24)
 
     dfs = {}
