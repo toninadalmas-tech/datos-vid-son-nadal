@@ -117,11 +117,35 @@ def main():
     # Netejar columnes auxiliars
     df = df.drop(columns=["ts", "ts_hora"])
     
+    # ── Model Empíric de Fulla Molla (LWD) ──
+    # Combina dades de l'estació amb Open-Meteo per saber si la fulla està molla.
+    wet = 0
+    fulla_molla = []
+    for _, row in df.iterrows():
+        pluja = pd.to_numeric(row.get("precipitacio_mm", 0), errors="coerce")
+        hr    = pd.to_numeric(row.get("humitat_pct", 0), errors="coerce")
+        rad   = pd.to_numeric(row.get("radiacio_solar_wm2", 0), errors="coerce")
+        et0   = pd.to_numeric(row.get("et0_openmeteo", 0), errors="coerce")
+        
+        # S'humiteja si plou o la humitat és molt alta
+        if pd.notna(pluja) and pluja > 0:
+            wet = 1
+        elif pd.notna(hr) and hr >= 90:
+            wet = 1
+        # S'asseca si hi ha molta radiació, ET0, o baixa molt la HR
+        elif (pd.notna(rad) and rad > 100) or (pd.notna(et0) and et0 > 0.1) or (pd.notna(hr) and hr < 70):
+            wet = 0
+            
+        fulla_molla.append(wet)
+        
+    df["fulla_molla"] = fulla_molla
+    
+    
     # Guardar
     df.to_csv(CSV_PATH, index=False)
     
     # Resum
-    new_cols = [c for c in COL_MAP.values() if c in df.columns]
+    new_cols = [c for c in list(COL_MAP.values()) + ["fulla_molla"] if c in df.columns]
     n_valid = df[new_cols].notna().sum().to_dict()
     print(f"  OK {len(new_cols)} columnes afegides a {CSV_PATH}:")
     for col, count in n_valid.items():

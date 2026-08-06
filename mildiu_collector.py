@@ -16,8 +16,8 @@ Columnes afegides a mildiu_historial.csv:
   pluja_10d_mm       -> precipitació acumulada últims 10 dies
   t_mitjana_10d      -> temperatura mitjana últims 10 dies
   condicio_primaria  -> 1 si es compleix la regla 3x10
-  hores_hr95         -> hores consecutives amb HR >= 95%
-  condicio_secundaria-> 1 si T 18-30°C i hores_hr95 >= 4
+  hores_fulla_molla         -> hores consecutives amb fulla_molla == 1
+  condicio_secundaria-> 1 si T 18-30°C i hores_fulla_molla >= 4
   graus_dia_inc      -> graus-dia acumulats des de l'última infecció (base 10°C)
   dies_incubacio_est -> dies estimats fins a l'aparició de símptomes
   risc_mildiu        -> inactiu / vigilancia / primari / secundari / alt
@@ -37,8 +37,8 @@ T_MIN_INFECCIO      = 10.0   # °C mínim per a infecció primària
 PLUJA_10D_MIN       = 10.0   # mm acumulats en 10 dies (regla 3x10)
 T_OPT_MIN           = 18.0   # °C rang òptim infecció secundària
 T_OPT_MAX           = 30.0   # °C rang òptim infecció secundària
-HR_MIN_SEC          = 95.0   # % HR mínim per a infecció secundària
-HORES_HR_MIN        = 4      # hores consecutives HR >= 95% (intervals 30min -> 8)
+HORES_FULLA_MOLLA_MIN          = 95.0   # % HR mínim per a infecció secundària
+HORES_FULLA_MOLLA_MIN        = 4      # hores consecutives fulla_molla == 1 (intervals 30min -> 8)
 T_BASE_INCUBACIO    = 10.0   # °C base per a càlcul de graus-dia
 GD_INCUBACIO        = 60.0   # graus-dia fins a aparició de símptomes
 
@@ -58,24 +58,22 @@ def calcular_t_mitjana_10d(df: pd.DataFrame) -> pd.Series:
     return pd.Series(res.values, index=df.index)
 
 
-def calcular_hores_hr95(df: pd.DataFrame) -> pd.Series:
+def calcular_hores_fulla_molla(df: pd.DataFrame) -> pd.Series:
     """
-    Intervals consecutius de 30 min amb HR >= 95%.
-    Reinicia a 0 quan HR baixa del llindar.
+    Intervals consecutius de 30 min amb fulla_molla == 1.
+    Reinicia a 0 quan s'asseca.
     """
-    hr = pd.to_numeric(df["humitat_pct"], errors="coerce")
-    alta_hr = (hr >= HR_MIN_SEC).astype(int)
+    fulla = pd.to_numeric(df.get("fulla_molla", 0), errors="coerce")
 
     comptador = np.zeros(len(df))
     cnt = 0
     for i in range(len(df)):
-        if alta_hr.iloc[i] == 1:
+        if fulla.iloc[i] == 1:
             cnt += 1
         else:
             cnt = 0
         comptador[i] = cnt
 
-    # Converteix intervals de 30min a hores
     return pd.Series(comptador * 0.5, index=df.index).round(1)
 
 
@@ -91,13 +89,13 @@ def condicio_primaria(t_mitj: pd.Series, pluja_10d: pd.Series) -> pd.Series:
 
 
 # ── Model d'infecció secundària (EPI simplificat) ────────────────────────────
-def condicio_secundaria(t: pd.Series, hores_hr: pd.Series) -> pd.Series:
+def condicio_secundaria(t: pd.Series, hores_fm: pd.Series) -> pd.Series:
     """
     Condició d'infecció secundària (conidis):
       - T entre 18-30°C (òptim 22°C)
-      - >= 4 hores consecutives amb HR >= 95%
+      - >= 4 hores consecutives amb fulla_molla == 1
     """
-    return (t.between(T_OPT_MIN, T_OPT_MAX) & (hores_hr >= HORES_HR_MIN)).astype(int)
+    return (t.between(T_OPT_MIN, T_OPT_MAX) & (hores_fm >= HORES_FULLA_MOLLA_MIN)).astype(int)
 
 
 # ── Graus-dia i període d'incubació ──────────────────────────────────────────
@@ -192,14 +190,14 @@ def calcular_model_mildiu(df: pd.DataFrame) -> pd.DataFrame:
 
     pluja_10d  = calcular_pluja_10d(df)
     t_mitj_10d = calcular_t_mitjana_10d(df)
-    hores_hr   = calcular_hores_hr95(df)
+    hores_fm   = calcular_hores_fulla_molla(df)
     cond_prim  = condicio_primaria(t_mitj_10d, pluja_10d)
-    cond_sec   = condicio_secundaria(t, hores_hr)
+    cond_sec   = condicio_secundaria(t, hores_fm)
     gd_acc, dies_inc, reinici = calcular_graus_dia(df, cond_prim, cond_sec)
 
     df["pluja_10d_mm"]        = pluja_10d
     df["t_mitjana_10d"]       = t_mitj_10d
-    df["hores_hr95"]          = hores_hr
+    df["hores_fulla_molla"]          = hores_fm
     df["condicio_primaria"]   = cond_prim
     df["condicio_secundaria"] = cond_sec
     df["graus_dia_inc"]       = gd_acc
@@ -227,7 +225,7 @@ def resum_mildiu(df: pd.DataFrame):
     pluja_10d     = df["pluja_10d_mm"].iloc[-1]
     t_mitj        = df["t_mitjana_10d"].iloc[-1]
     dies_inc      = df["dies_incubacio_est"].iloc[-1]
-    hores_hr      = df["hores_hr95"].iloc[-1]
+    hores_fm      = df["hores_fulla_molla"].iloc[-1]
 
     risc_colors = {
         "inactiu":   "--",
@@ -242,7 +240,7 @@ def resum_mildiu(df: pd.DataFrame):
     print(f"  Risc actual       : {risc_colors.get(risc_actual,'')} {risc_actual.upper()}")
     print(f"  Pluja 10 dies     : {pluja_10d:.1f} mm (mínim: {PLUJA_10D_MIN} mm)")
     print(f"  T mitjana 10 dies : {t_mitj:.1f}°C (mínim: {T_MIN_INFECCIO}°C)")
-    print(f"  Hores HR>=95%      : {hores_hr:.1f}h (mínim: {HORES_HR_MIN}h)")
+    print(f"  Hores Fulla Molla      : {hores_fm:.1f}h (mínim: {HORES_FULLA_MOLLA_MIN}h)")
     if not pd.isna(dies_inc):
         print(f"  Dies fins símptomes: {dies_inc:.0f} dies (estimat)")
     inf_prim = int(ult["condicio_primaria"].sum())

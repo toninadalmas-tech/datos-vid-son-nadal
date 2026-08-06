@@ -493,6 +493,10 @@ def generar_index(df: pd.DataFrame) -> str:
     risc_oidi = str(ultima.get("risc_gubler", "baix"))
     color_oidi = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828","molt alt":"#6a1b9a"}.get(risc_oidi, "#7a7269")
     risc_mildiu = str(ultima.get("risc_mildiu", "inactiu"))
+    risc_botritis = str(ultima.get("risc_botritis", "baix"))
+    color_botritis = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_botritis, "#7a7269")
+    risc_blackrot = str(ultima.get("risc_blackrot", "baix"))
+    color_blackrot = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_blackrot, "#7a7269")
     color_mildiu = {"inactiu":"#7a7269","vigilancia":"#c77d00","primari":"#d45e0a",
                     "secundari":"#c62828","alt":"#6a1b9a"}.get(risc_mildiu, "#7a7269")
 
@@ -566,12 +570,12 @@ def generar_index(df: pd.DataFrame) -> str:
         <span style="color:{color_mildiu};font-weight:600">{risc_mildiu.upper()}</span>
       </div>
       <div class="crop-stat">
-        <span><span class="dot" style="background:#7a7269"></span>Botritis</span>
-        <span style="color:#7a7269">Sense model</span>
+        <span><span class="dot" style="background:{color_botritis}"></span>Botritis</span>
+        <span style="color:{color_botritis};font-weight:600">{risc_botritis.upper()}</span>
       </div>
       <div class="crop-stat">
-        <span><span class="dot" style="background:#7a7269"></span>Black Rot</span>
-        <span style="color:#7a7269">Sense model</span>
+        <span><span class="dot" style="background:{color_blackrot}"></span>Black Rot</span>
+        <span style="color:{color_blackrot};font-weight:600">{risc_blackrot.upper()}</span>
       </div>
     </div>
     <span class="arrow">→</span>
@@ -796,6 +800,10 @@ def generar_vinya(df: pd.DataFrame) -> str:
 
     # Risc mildiu
     risc_mildiu = str(ultima.get("risc_mildiu", "inactiu"))
+    risc_botritis = str(ultima.get("risc_botritis", "baix"))
+    color_botritis = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_botritis, "#7a7269")
+    risc_blackrot = str(ultima.get("risc_blackrot", "baix"))
+    color_blackrot = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_blackrot, "#7a7269")
     color_mildiu = {"inactiu":"#7a7269","vigilancia":"#c77d00","primari":"#d45e0a",
                     "secundari":"#c62828","alt":"#6a1b9a"}.get(risc_mildiu, "#7a7269")
 
@@ -1050,6 +1058,10 @@ def generar_mildiu(df: pd.DataFrame) -> str:
     ultima = df.iloc[-1]
 
     risc_mildiu = str(ultima.get("risc_mildiu", "inactiu"))
+    risc_botritis = str(ultima.get("risc_botritis", "baix"))
+    color_botritis = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_botritis, "#7a7269")
+    risc_blackrot = str(ultima.get("risc_blackrot", "baix"))
+    color_blackrot = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_blackrot, "#7a7269")
     pluja_10d   = pd.to_numeric(ultima.get("pluja_10d_mm"), errors="coerce")
     dies_inc    = pd.to_numeric(ultima.get("dies_incubacio_est"), errors="coerce")
     ts_act      = ultima["ts"].strftime("%d/%m/%Y %H:%M")
@@ -1165,214 +1177,190 @@ function rebuildCurrentView() {
 #  PÀGINA: BOTRITIS (sense model)
 # ═════════════════════════════════════════════════════════════════════════════
 
-def generar_botritis() -> str:
+def generar_botritis(df: pd.DataFrame) -> str:
+    data_json = preparar_dades_json(df)
+    ultima = df.iloc[-1]
+    ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
+    risc   = str(ultima.get("risc_botritis", "baix"))
+    risc_color = {"baix":"#22c55e","moderat":"#f59e0b","alt":"#ef4444"}.get(risc, "#6b7280")
+    
     parts = []
     parts.append("<!DOCTYPE html>\n<html lang=\"ca\">")
-    parts.append(generar_head("Botritis · Son Nadal", amb_charts=False))
+    parts.append(generar_head("Botritis · Son Nadal"))
     parts.append("<body>")
     parts.append(generar_navbar("botritis"))
     parts.append("<main>")
-
-    parts.append("""
+    
+    parts.append(f"""
 <div class="page-header">
   <div>
     <h1>Botritis</h1>
-    <div class="sub">Botrytis cinerea · Podridura gris</div>
+    <div class="sub">Botrytis cinerea · Model Broome (1995) · {ts_act}</div>
   </div>
-  <span class="badge" style="color:#6b7280;border-color:#6b7280">SENSE MODEL</span>
+  <span class="badge" style="color:{risc_color};border-color:{risc_color}">Risc: {risc.upper()}</span>
 </div>
 
-<div class="notice">
-  ℹ️ Model predictiu en desenvolupament. Aquesta pàgina permet registrar tractaments
-  i consultar els factors de risc principals.
+<div class="card" style="margin-bottom:24px;">
+  {generar_filtre_bar()}
+  <div style="height:350px;width:100%;position:relative;">
+    <canvas id="chartModel"></canvas>
+  </div>
 </div>
 """)
-
     parts.append(generar_recomanacio_tractament("botritis"))
-
-    parts.append("""
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
-  <div class="info-card">
-    <h3>Descripció</h3>
-    <p>La botritis o podridura gris és causada pel fong <em>Botrytis cinerea</em>.
-    Ataca principalment els raïms madurs, provocant la seva descomposició.
-    Pot afectar també flors, brots i fulles en condicions favorables.</p>
-  </div>
-  <div class="info-card">
-    <h3>Factors de risc</h3>
-    <ul>
-      <li>Humitat relativa &gt; 90% durant períodes prolongats</li>
-      <li>Temperatura entre 15°C i 25°C</li>
-      <li>Pluja durant la maduració del raïm</li>
-      <li>Ferides per insectes (polilla del raïm) o pedregada</li>
-      <li>Varietats de raïm compactes amb poca ventilació</li>
-    </ul>
-  </div>
-  <div class="info-card">
-    <h3>Prevenció</h3>
-    <ul>
-      <li>Desfullat per millorar la ventilació dels raïms</li>
-      <li>Tractament preventiu al tancament del raïm i a l'envero</li>
-      <li>Productes: Fenhexamid, Ciprodinil, Pirimetanil</li>
-      <li>Control de la polilla del raïm (vector de ferides)</li>
-    </ul>
-  </div>
-  <div class="info-card">
-    <h3>Símptomes</h3>
-    <ul>
-      <li>Vel grisenc (esporulació) sobre els raïms</li>
-      <li>Grans que es tornen marrons i s'estoven</li>
-      <li>Olor a podrit dolç en casos avançats</li>
-      <li>Taques necròtiques a fulles i brots joves</li>
-    </ul>
-  </div>
-</div>
-""")
-
-    # Tractaments
     parts.append(generar_tractaments_section("botritis"))
-
     parts.append("</main>")
     parts.append(generar_footer())
-
-    # Script (només tractaments, sense gràfiques)
     parts.append("<script>")
+    parts.append(f"const ALL = {data_json};")
     parts.append("const MALALTIA_FILTRE = 'botritis';")
+    parts.append("""let chartModel;
+function buildCharts(start, end) {
+  let L = ALL.labels.slice(start, end);
+  let R = ALL.risc_botritis_pct.slice(start, end);
+  
+  if (chartModel) chartModel.destroy();
+  
+  const ctx = document.getElementById('chartModel');
+  if(!ctx) return;
+  
+  chartModel = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: L,
+      datasets: [{
+        label: 'Risc Botritis (%)',
+        data: R,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.2)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { min: 0, max: 100 }
+      }
+    }
+  });
+}
+""")
+    parts.append("if (typeof setFilter !== 'undefined') { setFilter('7d'); }")
     parts.append("</script>")
     parts.append("</body>\n</html>")
-
     return "\n".join(parts)
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  PÀGINA: BLACK ROT (sense model)
-# ═════════════════════════════════════════════════════════════════════════════
-
-def generar_blackrot() -> str:
+def generar_blackrot(df: pd.DataFrame) -> str:
+    data_json = preparar_dades_json(df)
+    ultima = df.iloc[-1]
+    ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
+    risc   = str(ultima.get("risc_blackrot", "baix"))
+    risc_color = {"baix":"#22c55e","moderat":"#f59e0b","alt":"#ef4444"}.get(risc, "#6b7280")
+    
     parts = []
     parts.append("<!DOCTYPE html>\n<html lang=\"ca\">")
-    parts.append(generar_head("Black Rot · Son Nadal", amb_charts=False))
+    parts.append(generar_head("Black Rot · Son Nadal"))
     parts.append("<body>")
     parts.append(generar_navbar("blackrot"))
     parts.append("<main>")
-
-    parts.append("""
+    
+    parts.append(f"""
 <div class="page-header">
   <div>
     <h1>Black Rot</h1>
-    <div class="sub">Guignardia bidwellii · Podridura negra</div>
+    <div class="sub">Guignardia bidwellii · Model Spotts (1977) · {ts_act}</div>
   </div>
-  <span class="badge" style="color:#6b7280;border-color:#6b7280">SENSE MODEL</span>
+  <span class="badge" style="color:{risc_color};border-color:{risc_color}">Risc: {risc.upper()}</span>
 </div>
 
-<div class="notice">
-  ℹ️ Model predictiu en desenvolupament. Aquesta pàgina permet registrar tractaments
-  i consultar els factors de risc principals.
+<div class="card" style="margin-bottom:24px;">
+  {generar_filtre_bar()}
+  <div style="height:350px;width:100%;position:relative;">
+    <canvas id="chartModel"></canvas>
+  </div>
 </div>
 """)
-
     parts.append(generar_recomanacio_tractament("blackrot"))
-
-    parts.append("""
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
-  <div class="info-card">
-    <h3>Descripció</h3>
-    <p>El black rot o podridura negra és causat pel fong <em>Guignardia bidwellii</em>.
-    És una malaltia molt destructiva que pot afectar fulles, brots i especialment els raïms,
-    que acaben momificats i negres a la planta.</p>
-  </div>
-  <div class="info-card">
-    <h3>Factors de risc</h3>
-    <ul>
-      <li>Temperatura entre 20°C i 30°C (òptim ~26°C)</li>
-      <li>Pluja o mullat foliar durant &gt; 6 hores</li>
-      <li>Raïms infectats momificats de l'any anterior</li>
-      <li>Fulles mortes amb picnidis al terra</li>
-      <li>Període crític: floració fins a tancament del raïm</li>
-    </ul>
-  </div>
-  <div class="info-card">
-    <h3>Prevenció</h3>
-    <ul>
-      <li>Eliminar raïms momificats de la vinya i del terra</li>
-      <li>Tractaments preventius des de brotació</li>
-      <li>Productes: Mancozeb, Metiram, Myclobutanil</li>
-      <li>Millorar la ventilació amb poda adequada</li>
-    </ul>
-  </div>
-  <div class="info-card">
-    <h3>Símptomes</h3>
-    <ul>
-      <li>Lesions marrons circulars a fulles amb vora fosca</li>
-      <li>Petits punts negres (picnidis) sobre les lesions</li>
-      <li>Raïms que es tornen negres i es momifiquen</li>
-      <li>Lesions allargades a sarments joves</li>
-    </ul>
-  </div>
-</div>
-""")
-
-    # Tractaments
     parts.append(generar_tractaments_section("blackrot"))
-
     parts.append("</main>")
     parts.append(generar_footer())
-
-    # Script (només tractaments, sense gràfiques)
     parts.append("<script>")
+    parts.append(f"const ALL = {data_json};")
     parts.append("const MALALTIA_FILTRE = 'blackrot';")
+    parts.append("""let chartModel;
+function buildCharts(start, end) {
+  let L = ALL.labels.slice(start, end);
+  // Spotts model returns string: 'baix', 'moderat', 'alt'
+  // We map it to numeric values to plot
+  let R_num = ALL.risc_blackrot.slice(start, end).map(r => r === 'alt' ? 3 : r === 'moderat' ? 2 : 1);
+  let colors = R_num.map(r => r === 3 ? 'rgba(239,68,68,0.8)' : r === 2 ? 'rgba(245,158,11,0.8)' : 'rgba(34,197,94,0.5)');
+  
+  if (chartModel) chartModel.destroy();
+  
+  const ctx = document.getElementById('chartModel');
+  if(!ctx) return;
+  
+  chartModel = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: L,
+      datasets: [{
+        label: 'Risc Black Rot',
+        data: R_num,
+        backgroundColor: colors
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { 
+          min: 0, 
+          max: 3, 
+          ticks: { callback: v => ['', 'Baix', 'Moderat', 'Alt'][v] || v }
+        }
+      }
+    }
+  });
+}
+""")
+    parts.append("if (typeof setFilter !== 'undefined') { setFilter('7d'); }")
     parts.append("</script>")
     parts.append("</body>\n</html>")
-
     return "\n".join(parts)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  UTILITATS
-# ═════════════════════════════════════════════════════════════════════════════
 
-def _hex_to_rgb(hex_color: str) -> str:
-    """Converteix #rrggbb a 'r,g,b' per usar en rgba()."""
-    h = hex_color.lstrip("#")
-    return f"{int(h[0:2],16)},{int(h[2:4],16)},{int(h[4:6],16)}"
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  MAIN
-# ═════════════════════════════════════════════════════════════════════════════
+def _hex_to_rgb(hex_col: str) -> tuple:
+    if not hex_col: return (0,0,0)
+    hex_col = hex_col.lstrip('#')
+    return tuple(int(hex_col[i:i+2], 16) for i in (0, 2, 4))
 
 def main():
-    if not os.path.exists(CSV_HISTORIAL):
-        print("[!] No s'ha trobat historial.csv")
-        raise SystemExit(1)
-
-    df = carregar_dades()
-    if df.empty:
-        print("[!] Historial buit")
-        raise SystemExit(1)
-
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    df = carregar_dades()
 
-    pages = {
-        "index.html":    generar_index(df),
-        "vinya.html":    generar_vinya(df),
-        "oidi.html":     generar_oidi(df),
-        "mildiu.html":   generar_mildiu(df),
-        "botritis.html": generar_botritis(),
-        "blackrot.html": generar_blackrot(),
-    }
+    with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
+        f.write(generar_index(df))
 
-    for filename, html in pages.items():
-        path = os.path.join(OUTPUT_DIR, filename)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(html)
-        print(f"  OK {path}")
+    with open(os.path.join(OUTPUT_DIR, "vinya.html"), "w", encoding="utf-8") as f:
+        f.write(generar_vinya(df))
 
-    print(f"\nDashboard generat: {len(pages)} pagines")
-    print(f"  {len(df)} registres | "
-          f"{df['ts'].min().strftime('%d/%m')} -> "
-          f"{df['ts'].max().strftime('%d/%m/%Y %H:%M')}")
+    with open(os.path.join(OUTPUT_DIR, "oidi.html"), "w", encoding="utf-8") as f:
+        f.write(generar_oidi(df))
 
+    with open(os.path.join(OUTPUT_DIR, "mildiu.html"), "w", encoding="utf-8") as f:
+        f.write(generar_mildiu(df))
+
+    with open(os.path.join(OUTPUT_DIR, "botritis.html"), "w", encoding="utf-8") as f:
+        f.write(generar_botritis(df))
+
+    with open(os.path.join(OUTPUT_DIR, "blackrot.html"), "w", encoding="utf-8") as f:
+        f.write(generar_blackrot(df))
+
+    print(f"  OK Dashboard generat a {OUTPUT_DIR}/")
 
 if __name__ == "__main__":
     main()
