@@ -686,7 +686,7 @@ async function guardarFaseRepo(faseVal) {
   if (!token() || !repo()) { toast('Configura el token a Tractaments primer', false); return; }
   const cos = { 
     message: `fase fenologica: ${faseVal}`,
-    content: btoa(JSON.stringify({fase: parseInt(faseVal), data: new Date().toISOString()}))
+    content: btoa(JSON.stringify({fase: faseVal, data: new Date().toISOString()}))
   };
   if (window._faseSha) cos.sha = window._faseSha;
   try {
@@ -704,8 +704,40 @@ async function guardarFaseRepo(faseVal) {
   } catch(e) { toast('Error guardant fase', false); }
 }
 
+const VARIETATS_GDD = {
+  'auto_moscatell':   {2: 250, 3: 500, 4: 900,  5: 1400},
+  'auto_prensal':     {2: 300, 3: 600, 4: 1000, 5: 1600},
+  'auto_callet':      {2: 320, 3: 650, 4: 1100, 5: 1750},
+  'auto_manto_negro': {2: 320, 3: 650, 4: 1100, 5: 1750},
+  'auto_cabernet':    {2: 350, 3: 700, 4: 1150, 5: 1800}
+};
+
+function getFaseFromGDD(varietat) {
+  const limits = VARIETATS_GDD[varietat];
+  const gdd = ALL.gdd_anual || 0;
+  if (gdd >= limits[5]) return 5;
+  if (gdd >= limits[4]) return 4;
+  if (gdd >= limits[3]) return 3;
+  if (gdd >= limits[2]) return 2;
+  return 1;
+}
+
 function updateKastRisk(faseVal) {
-  const currentFase = parseInt(faseVal);
+  let currentFase;
+  const lbl = document.getElementById('auto-fase-lbl');
+  
+  if (typeof faseVal === 'string' && faseVal.startsWith('auto_')) {
+     currentFase = getFaseFromGDD(faseVal);
+     if (lbl) {
+        const noms = ['N/A','Brotació a Pre-floració','Floració i Quallat','Creixement del gra','Tancament del raïm','Envero i Maduració'];
+        lbl.innerText = `🤖 Fase detectada: ${noms[currentFase]} (GDD acumulat: ${ALL.gdd_anual})`;
+        lbl.style.display = 'block';
+     }
+  } else {
+     currentFase = parseInt(faseVal);
+     if (lbl) lbl.style.display = 'none';
+  }
+  
   const mult = MULTIPLIERS[currentFase];
   const uiAct = ALL.ui_acc[ALL.ui_acc.length - 1] || 0;
   const uiKast = uiAct * mult;

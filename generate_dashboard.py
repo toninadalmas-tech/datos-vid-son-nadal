@@ -407,6 +407,25 @@ def calc_Ra(day_of_year: int, lat_deg: float) -> float:
     )
     return Ra_MJ / 2.45
 
+
+def get_annual_gdd(lat=39.5146, lon=3.2124) -> float:
+    import datetime, requests
+    try:
+        now = datetime.datetime.now()
+        start_date = f"{now.year}-03-01"
+        end_date = now.strftime("%Y-%m-%d")
+        if now.month < 3: return 0.0
+        
+        url = "https://archive-api.open-meteo.com/v1/archive"
+        params = {"latitude": lat, "longitude": lon, "start_date": start_date, "end_date": end_date, "daily": "temperature_2m_mean", "timezone": "Europe/Madrid"}
+        resp = requests.get(url, params=params, timeout=10)
+        data = resp.json()
+        if "daily" not in data or "temperature_2m_mean" not in data["daily"]: return -1.0
+        
+        return round(sum(max(t - 10.0, 0.0) for t in data["daily"]["temperature_2m_mean"] if t is not None), 1)
+    except Exception as e:
+        return -1.0
+
 def calc_ET0_hargreaves(tmin, tmax, tmean, doy, lat=39.5146):
     Ra = calc_Ra(doy, lat)
     tdiff = max(tmax - tmin, 0)
@@ -512,6 +531,7 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
         "daily":            daily_data,
         "risc_botritis_pct": risc_botritis_pct,
         "risc_blackrot":     risc_blackrot,
+        "gdd_anual":        get_annual_gdd(),
     })
 
 
@@ -996,15 +1016,25 @@ def generar_oidi(df: pd.DataFrame) -> str:
 <div class="card" style="margin-bottom:24px;">
   <div class="card-title">Resistència Ontogènica (Model Kast)</div>
   <label style="margin-top:0">Fase fenològica actual de la vinya:</label>
-  <select id="sel-fase" onchange="canviFase(this.value)">
-    <option value="1">🌱 Brotació a Pre-floració (Risc climàtic complet - Només fulles)</option>
-    <option value="2">🌼 Floració i Quallat (Risc MÀXIM - Raïm molt sensible)</option>
-    <option value="3">🍇 Creixement del gra (Risc Alt - Raïm sensible)</option>
-    <option value="4">🟢 Tancament del raïm (Risc Moderat - Inici de resistència)</option>
-    <option value="5">🟣 Envero i Maduració (Risc NUL pel raïm - Resistència total)</option>
+  <select id="sel-fase" onchange="canviFase(this.value)" style="margin-bottom:8px">
+    <optgroup label="🤖 Automàtic (Predicció per GDD)">
+        <option value="auto_moscatell">⚙️ Moscatell (Primerenca)</option>
+        <option value="auto_prensal">⚙️ Premsal Blanc</option>
+        <option value="auto_callet">⚙️ Callet</option>
+        <option value="auto_manto_negro">⚙️ Manto Negro</option>
+        <option value="auto_cabernet">⚙️ Cabernet (Tardana)</option>
+    </optgroup>
+    <optgroup label="🖐️ Manual (Forçar Estat)">
+        <option value="1">🌱 Fase 1: Brotació a Pre-floració</option>
+        <option value="2">🌼 Fase 2: Floració i Quallat</option>
+        <option value="3">🍇 Fase 3: Creixement del gra</option>
+        <option value="4">🟢 Fase 4: Tancament del raïm</option>
+        <option value="5">🟣 Fase 5: Envero i Maduració</option>
+    </optgroup>
   </select>
-  <div style="font-size:12px;color:var(--muted);margin-top:8px;">
-    L'edat del raïm modifica el risc real d'infecció calculat pel model Gubler. Selecciona la fase per ajustar la predicció i les recomanacions.
+  <div id="auto-fase-lbl" style="display:none; font-size:13px; font-weight:600; color:#3b82f6; margin-bottom:8px; padding:6px 10px; background:rgba(59,130,246,0.1); border-radius:4px;"></div>
+  <div style="font-size:12px;color:var(--muted);">
+    L'edat del raïm modifica el risc real d'infecció. Pots deixar que el sistema ho calculi automàticament o forçar-ho a mà.
   </div>
 </div>
 
