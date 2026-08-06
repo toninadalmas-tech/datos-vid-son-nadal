@@ -649,11 +649,15 @@ function renderLlista(tractaments) {
       <button class="btn btn-danger" onclick="eliminarTractament(${idxReal})">Eliminar</button></div>`;
   }).join('');
 }
-(async () => {
-  const dades = await llegirFitxer();
-  renderLlista(dades.tractaments);
-  if (token() && repo()) document.getElementById('config-section').style.display = 'none';
-})();
+document.addEventListener('DOMContentLoaded', async () => {
+  const el = document.getElementById('llista-tractaments');
+  if (el) {
+    const dades = await llegirFitxer();
+    renderLlista(dades.tractaments);
+  }
+  const conf = document.getElementById('config-section');
+  if (conf && token() && repo()) conf.style.display = 'none';
+});
 
 
 const FASE_FILE = 'fase_fenologica.json';
@@ -798,11 +802,11 @@ async function canviFase(val) {
 }
 
 // Init
-(async () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const sel = document.getElementById('sel-fase');
   if(sel) {
      const f = await llegirFase();
      sel.value = f;
      updateKastRisk(f);
   }
-})();
+});

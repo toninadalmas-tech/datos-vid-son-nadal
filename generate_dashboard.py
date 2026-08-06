@@ -389,6 +389,10 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
         ).fillna(0), errors="coerce"
     ).tolist() if "risc_mildiu" in df.columns else [0]*len(labels)
 
+    risc_botritis_pct = pd.to_numeric(df.get("risc_botritis_pct", pd.Series([0]*len(df))), errors="coerce").fillna(0).round(1).tolist()
+    
+    risc_blackrot = df.get("risc_blackrot", pd.Series(["baix"]*len(df))).fillna("baix").tolist()
+
     tractaments_data = []
     import os
     if os.path.exists("tractaments.json"):
@@ -462,6 +466,8 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
         "tractaments":      tractaments_data,
         "parceles":         parceles_data,
         "daily":            daily_data,
+        "risc_botritis_pct": risc_botritis_pct,
+        "risc_blackrot":     risc_blackrot,
     })
 
 

@@ -108,9 +108,11 @@ def calcular_gubler(df: pd.DataFrame) -> pd.DataFrame:
             reinici[i] = 1
         else:
             ui = ui_horaria(t, hr, uv, rad)
-            # Normalitzar a 30 min (fórmula original assumia hores)
             ui_h[i] = ui / 2.0
             acumulat += ui_h[i]
+            
+            if acumulat > 150.0:
+                acumulat = 150.0
             
         ui_acc[i] = acumulat
 
