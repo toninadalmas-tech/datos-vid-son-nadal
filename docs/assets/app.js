@@ -437,11 +437,17 @@ function createRiscMildiuChart(L, riscData) {
 
 
 const FITXER = 'tractaments.json';
-document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
-document.getElementById('gh-repo').value  = localStorage.getItem('gh_repo')  || '';
-const ara = new Date();
-ara.setMinutes(ara.getMinutes() - ara.getTimezoneOffset());
-document.getElementById('inp-data').value = ara.toISOString().slice(0,16);
+const ghTokenEl = document.getElementById('gh-token');
+if (ghTokenEl) ghTokenEl.value = localStorage.getItem('gh_token') || '';
+const ghRepoEl = document.getElementById('gh-repo');
+if (ghRepoEl) ghRepoEl.value = localStorage.getItem('gh_repo') || '';
+
+const inpDataEl = document.getElementById('inp-data');
+if (inpDataEl) {
+  const ara = new Date();
+  ara.setMinutes(ara.getMinutes() - ara.getTimezoneOffset());
+  inpDataEl.value = ara.toISOString().slice(0,16);
+}
 function token() { return localStorage.getItem('gh_token') || ''; }
 function repo()  { return localStorage.getItem('gh_repo')  || ''; }
 function toast(msg, ok=true) {
