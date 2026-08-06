@@ -1,0 +1,40 @@
+{
+  "parceles": [
+    {
+      "id": "vinya_principal",
+      "nom": "Vinya Principal",
+      "cultiu": "vinya",
+      "link": "vinya.html",
+      "coordenades": [
+        [39.5150, 3.1535],
+        [39.5150, 3.1545],
+        [39.5140, 3.1545],
+        [39.5140, 3.1535]
+      ]
+    },
+    {
+      "id": "cirerers_nord",
+      "nom": "Cirerers Nord",
+      "cultiu": "cirerers",
+      "link": "#",
+      "coordenades": [
+        [39.5155, 3.1530],
+        [39.5155, 3.1535],
+        [39.5151, 3.1535],
+        [39.5151, 3.1530]
+      ]
+    },
+    {
+      "id": "pistatxo_est",
+      "nom": "Pistatxo Est",
+      "cultiu": "pistatxo",
+      "link": "#",
+      "coordenades": [
+        [39.5155, 3.1540],
+        [39.5155, 3.1550],
+        [39.5151, 3.1550],
+        [39.5151, 3.1540]
+      ]
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import pandas as pd
 import numpy as np
 import json
 import os
+import math
 from datetime import datetime
 
 # ── Configuració ─────────────────────────────────────────────────────────────
@@ -30,30 +31,103 @@ OUTPUT_DIR    = "docs"
 CSS = """
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0f1117;--surface:#1a1d27;--surface2:#232635;
-  --border:#2a2d3a;--text:#e8eaf0;--muted:#6b7280;
-  --accent:#3b82f6;--verd:#22c55e;--ambre:#f59e0b;
-  --taronja:#f97316;--vermell:#ef4444;--violeta:#7c3aed;
-  --radius:10px;
+  --bg:#f5f1eb;--surface:#ffffff;--surface2:#ece7df;
+  --border:#ddd6cc;--text:#2d2926;--muted:#7a7269;
+  --heading:#1a1714;
+  --accent:#6b4c8a;--verd:#2e7d32;--ambre:#c77d00;
+  --taronja:#d45e0a;--vermell:#c62828;--violeta:#6a1b9a;
+  --radius:12px;
+  --shadow:0 2px 8px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.08);
+  --navbar-bg:rgba(255,255,255,0.82);
+  --chart-grid:rgba(0,0,0,.06);
+  --chart-tick:#7a7269;
+  --input-bg:#f5f1eb;
+  --toast-bg:#ffffff;
+}
+[data-theme="dark"]{
+  --bg:#1c1917;--surface:#292524;--surface2:#3a3530;
+  --border:#4a453e;--text:#e7e1d8;--muted:#a09888;
+  --heading:#f5f1eb;
+  --accent:#a78bfa;--verd:#4ade80;--ambre:#fbbf24;
+  --taronja:#fb923c;--vermell:#f87171;--violeta:#c084fc;
+  --shadow:0 2px 8px rgba(0,0,0,.25);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.35);
+  --navbar-bg:rgba(28,25,23,0.88);
+  --chart-grid:rgba(255,255,255,.06);
+  --chart-tick:#a09888;
+  --input-bg:#3a3530;
+  --toast-bg:#292524;
 }
 body{background:var(--bg);color:var(--text);
   font-family:'Inter',system-ui,-apple-system,sans-serif;
-  font-size:14px;line-height:1.5;margin:0;padding:0}
+  font-size:14px;line-height:1.5;margin:0;padding:0;
+  transition:background .3s,color .3s}
 
 /* Navbar */
 .navbar{position:sticky;top:0;z-index:100;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 24px;height:56px;
-  background:rgba(15,17,23,0.88);
+  background:var(--navbar-bg);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--border)}
-.nav-brand{font-size:16px;font-weight:600;color:#fff;
+  border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow);transition:background .3s}
+.nav-brand{font-size:16px;font-weight:600;color:var(--heading);
   text-decoration:none;display:flex;align-items:center;gap:8px}
-.nav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nav-links{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .nav-link{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;
   color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .2s}
-.nav-link:hover{color:var(--text);background:var(--surface)}
-.nav-link.active{color:#fff;background:var(--surface2)}
+.nav-link:hover{color:var(--text);background:var(--surface2)}
+.nav-link.active{color:var(--heading);background:var(--surface2);font-weight:600}
+
+/* Theme toggle */
+.theme-toggle{background:none;border:1px solid var(--border);border-radius:8px;
+  cursor:pointer;padding:5px 10px;font-size:16px;line-height:1;
+  color:var(--muted);transition:all .2s;margin-left:8px}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Navbar dropdown */
+.nav-dropdown{position:relative}
+.nav-dropdown-toggle{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;
+  color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .2s;
+  cursor:pointer;display:flex;align-items:center;gap:4px;background:none;border:none;
+  font-family:inherit}
+.nav-dropdown-toggle:hover{color:var(--text);background:var(--surface2)}
+.nav-dropdown-toggle.active{color:var(--heading);background:var(--surface2);font-weight:600}
+.nav-dropdown-toggle .chevron{font-size:10px;transition:transform .2s;opacity:.6}
+.nav-dropdown:hover .chevron{transform:rotate(180deg)}
+.nav-dropdown-menu{display:none;position:absolute;top:100%;left:0;
+  min-width:180px;padding:6px;margin-top:4px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;box-shadow:var(--shadow-lg);z-index:200}
+.nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:block;padding:7px 14px;border-radius:6px;
+  font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
+  transition:all .15s}
+.nav-dropdown-menu a:hover{color:var(--text);background:var(--surface2)}
+.nav-dropdown-menu a.active{color:var(--accent);font-weight:600}
+.nav-dropdown-menu .menu-sep{height:1px;background:var(--border);margin:4px 8px}
+
+/* Crop summary cards (index) */
+.crop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;margin-bottom:28px}
+.crop-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:22px;text-decoration:none;color:inherit;
+  transition:all .25s ease;position:relative;overflow:hidden;display:block;
+  box-shadow:var(--shadow)}
+.crop-card:hover{border-color:var(--accent);transform:translateY(-3px);
+  box-shadow:var(--shadow-lg)}
+.crop-card .crop-icon{font-size:32px;margin-bottom:8px;display:block}
+.crop-card .crop-name{font-size:18px;font-weight:700;color:var(--heading);margin-bottom:4px}
+.crop-card .crop-sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.crop-card .crop-stats{display:flex;flex-direction:column;gap:6px}
+.crop-card .crop-stat{display:flex;align-items:center;justify-content:space-between;
+  font-size:13px;color:var(--text)}
+.crop-card .crop-stat .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.crop-card .crop-coming{color:var(--muted);font-size:13px;font-style:italic;padding:8px 0}
+.crop-card .arrow{position:absolute;right:18px;bottom:18px;
+  color:var(--muted);font-size:18px;transition:transform .2s}
+.crop-card:hover .arrow{transform:translateX(3px);color:var(--accent)}
 
 /* Main */
 main{max-width:1100px;margin:0 auto;padding:24px 16px}
@@ -61,7 +135,7 @@ main{max-width:1100px;margin:0 auto;padding:24px 16px}
 /* Page header */
 .page-header{display:flex;justify-content:space-between;align-items:flex-start;
   margin-bottom:24px;flex-wrap:wrap;gap:12px}
-.page-header h1{font-size:22px;font-weight:600;color:#fff;letter-spacing:-.3px}
+.page-header h1{font-size:22px;font-weight:700;color:var(--heading);letter-spacing:-.3px}
 .page-header .sub{color:var(--muted);font-size:12px;margin-top:2px}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
   border-radius:20px;font-size:12px;font-weight:600;
@@ -71,11 +145,12 @@ main{max-width:1100px;margin:0 auto;padding:24px 16px}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
   gap:12px;margin-bottom:24px}
 .kpi{background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:16px 18px;transition:border-color .2s}
-.kpi:hover{border-color:#3a3d4a}
+  border-radius:var(--radius);padding:16px 18px;transition:all .2s;
+  box-shadow:var(--shadow)}
+.kpi:hover{border-color:var(--accent);box-shadow:var(--shadow-lg)}
 .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;
   letter-spacing:.5px;margin-bottom:6px}
-.kpi-val{font-size:28px;font-weight:600;color:#fff;line-height:1}
+.kpi-val{font-size:28px;font-weight:700;color:var(--heading);line-height:1}
 .kpi-unit{font-size:13px;color:var(--muted);margin-left:2px}
 .kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
 .ui-bar-outer{background:var(--border);border-radius:4px;height:6px;
@@ -83,18 +158,41 @@ main{max-width:1100px;margin:0 auto;padding:24px 16px}
 .ui-bar-inner{height:100%;border-radius:4px;transition:width .5s}
 
 /* Filter bar */
-.filter-bar{display:flex;gap:4px;margin-bottom:16px}
-.filter-btn{padding:5px 14px;border-radius:7px;border:1px solid var(--border);
-  background:transparent;color:var(--muted);cursor:pointer;
-  font-size:12px;font-weight:500;font-family:inherit;transition:all .2s}
-.filter-btn:hover{color:var(--text);border-color:#3a3d4a}
-.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 16px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;
+  font-size:12px;font-weight:500;font-family:inherit;transition:all .2s;
+  box-shadow:var(--shadow)}
+.filter-btn:hover{color:var(--text);border-color:var(--accent)}
+.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);
+  box-shadow:0 2px 8px rgba(107,76,138,.25)}
+.filter-sep{width:1px;height:24px;background:var(--border);margin:0 6px}
+.filter-date{padding:5px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;
+  width:auto;cursor:pointer}
+.filter-date:focus{border-color:var(--accent);outline:none}
+.filter-apply{padding:6px 14px;border-radius:8px;border:none;
+  background:var(--accent);color:#fff;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;transition:all .2s}
+.filter-apply:hover{opacity:.85}
 
 /* Chart cards */
 .chart-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:18px;margin-bottom:16px}
-.chart-title{font-size:13px;font-weight:500;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  border-radius:var(--radius);padding:18px;margin-bottom:16px;
+  box-shadow:var(--shadow);transition:box-shadow .2s}
+.chart-card:hover{box-shadow:var(--shadow-lg)}
+.chart-title{font-size:13px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between}
+.chart-info-btn{background:var(--surface2);border:1px solid var(--border);
+  border-radius:50%;width:22px;height:22px;display:flex;align-items:center;
+  justify-content:center;font-size:12px;cursor:pointer;color:var(--muted);
+  transition:all .2s;flex-shrink:0;line-height:1}
+.chart-info-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chart-desc{display:none;font-size:12px;line-height:1.6;color:var(--muted);
+  background:var(--surface2);border-radius:8px;padding:10px 14px;
+  margin-bottom:12px;border-left:3px solid var(--accent)}
+.chart-desc.show{display:block}
 canvas{max-height:200px}
 .llindars{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:11px}
 .ll{padding:2px 8px;border-radius:4px;border:1px solid}
@@ -103,12 +201,13 @@ canvas{max-height:200px}
 .disease-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
   gap:16px;margin-bottom:28px}
 .disease-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;padding:22px;text-decoration:none;color:inherit;
-  transition:all .25s ease;position:relative;overflow:hidden;display:block}
-.disease-card:hover{border-color:#3a3d4a;transform:translateY(-2px);
-  box-shadow:0 8px 25px rgba(0,0,0,.3)}
+  border-radius:14px;padding:22px;text-decoration:none;color:inherit;
+  transition:all .25s ease;position:relative;overflow:hidden;display:block;
+  box-shadow:var(--shadow)}
+.disease-card:hover{border-color:var(--accent);transform:translateY(-3px);
+  box-shadow:var(--shadow-lg)}
 .disease-card .icon{font-size:28px;margin-bottom:10px;display:block}
-.disease-card .name{font-size:16px;font-weight:600;color:#fff;margin-bottom:2px}
+.disease-card .name{font-size:16px;font-weight:700;color:var(--heading);margin-bottom:2px}
 .disease-card .agent{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px}
 .disease-card .risk-line{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .disease-card .risk-badge{display:inline-flex;align-items:center;gap:5px;
@@ -116,42 +215,44 @@ canvas{max-height:200px}
 .disease-card .desc{font-size:12px;color:var(--muted);line-height:1.5}
 .disease-card .arrow{position:absolute;right:18px;bottom:18px;
   color:var(--muted);font-size:18px;transition:transform .2s}
-.disease-card:hover .arrow{transform:translateX(3px);color:var(--text)}
+.disease-card:hover .arrow{transform:translateX(3px);color:var(--accent)}
 
 /* Info cards */
 .info-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:20px;margin-bottom:16px}
-.info-card h3{font-size:14px;font-weight:600;color:#fff;margin-bottom:8px}
+  border-radius:var(--radius);padding:20px;margin-bottom:16px;
+  box-shadow:var(--shadow)}
+.info-card h3{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:8px}
 .info-card p{color:var(--muted);font-size:13px;line-height:1.6}
 .info-card ul{color:var(--muted);font-size:13px;margin-left:16px;margin-top:6px;line-height:1.8}
-.notice{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);
+.notice{background:rgba(107,76,138,.06);border:1px solid rgba(107,76,138,.2);
   border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;
   font-size:13px;color:var(--accent);display:flex;align-items:center;gap:10px}
 
 /* Recommendation Box */
-.recom-box{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
+.recom-box{background:rgba(46,125,50,.06);border:1px solid rgba(46,125,50,.2);
   border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;
   font-size:13px;color:var(--verd);display:flex;align-items:flex-start;gap:12px}
-.recom-box.warning{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);color:var(--vermell)}
-.recom-box.info{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:var(--accent)}
+.recom-box.warning{background:rgba(198,40,40,.06);border-color:rgba(198,40,40,.2);color:var(--vermell)}
+.recom-box.info{background:rgba(107,76,138,.06);border-color:rgba(107,76,138,.2);color:var(--accent)}
 .recom-icon{font-size:18px;line-height:1}
 .recom-content h4{font-size:14px;font-weight:600;margin-bottom:4px;color:currentColor}
-.recom-content p{color:var(--text);opacity:0.9;margin-bottom:4px;line-height:1.5}
-.recom-content ul{color:var(--text);opacity:0.9;margin-left:16px;margin-top:4px;line-height:1.6}
+.recom-content p{color:var(--text);opacity:0.85;margin-bottom:4px;line-height:1.5}
+.recom-content ul{color:var(--text);opacity:0.85;margin-left:16px;margin-top:4px;line-height:1.6}
 
 /* Treatment section */
-.section-title{font-size:16px;font-weight:600;color:#fff;margin:32px 0 16px;
+.section-title{font-size:16px;font-weight:700;color:var(--heading);margin:32px 0 16px;
   padding-top:20px;border-top:1px solid var(--border)}
 .card{background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;padding:20px;margin-bottom:16px}
-.card-title{font-size:13px;font-weight:500;color:var(--muted);
+  border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card-title{font-size:13px;font-weight:600;color:var(--muted);
   text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
 label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:12px}
 label:first-of-type{margin-top:0}
-input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);
+input,select,textarea{width:100%;background:var(--input-bg);border:1px solid var(--border);
   border-radius:8px;color:var(--text);font-size:14px;
-  padding:8px 12px;outline:none;font-family:inherit}
-input:focus,textarea:focus{border-color:var(--accent)}
+  padding:8px 12px;outline:none;font-family:inherit;transition:border-color .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(107,76,138,.1)}
 textarea{resize:vertical;min-height:60px}
 .checkbox-group{display:flex;gap:12px;margin-top:4px;flex-wrap:wrap}
 .checkbox-label{display:flex;align-items:center;gap:6px;cursor:pointer;
@@ -164,7 +265,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--ac
 .btn-primary:hover{opacity:.85}
 .btn-danger{background:transparent;border:1px solid var(--vermell);
   color:var(--vermell);padding:4px 10px;font-size:12px}
-.btn-danger:hover{background:rgba(239,68,68,.1)}
+.btn-danger:hover{background:rgba(198,40,40,.08)}
 .actions{display:flex;justify-content:flex-end;margin-top:20px}
 .tractament-item{display:grid;grid-template-columns:1fr auto;
   gap:8px;align-items:start;padding:12px 0;
@@ -174,14 +275,15 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--ac
 .t-producte{font-size:12px;color:var(--muted);margin-top:2px}
 .t-badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
 .t-badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
-.t-badge-oidio{background:rgba(245,158,11,.15);color:var(--ambre)}
-.t-badge-mildiu{background:rgba(59,130,246,.15);color:var(--accent)}
-.t-badge-botritis{background:rgba(139,92,246,.15);color:#a78bfa}
-.t-badge-blackrot{background:rgba(239,68,68,.15);color:var(--vermell)}
+.t-badge-oidio{background:rgba(199,125,0,.12);color:var(--ambre)}
+.t-badge-mildiu{background:rgba(107,76,138,.12);color:var(--accent)}
+.t-badge-botritis{background:rgba(139,92,246,.12);color:#7c3aed}
+.t-badge-blackrot{background:rgba(198,40,40,.12);color:var(--vermell)}
 .empty{color:var(--muted);font-size:13px;padding:16px 0;text-align:center}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-  background:#1a1d27;border:1px solid var(--border);border-radius:8px;
-  padding:10px 20px;font-size:13px;display:none;z-index:999}
+  background:var(--toast-bg);border:1px solid var(--border);border-radius:8px;
+  padding:10px 20px;font-size:13px;display:none;z-index:999;
+  box-shadow:var(--shadow-lg)}
 .toast.ok{border-color:var(--verd);color:var(--verd)}
 .toast.err{border-color:var(--vermell);color:var(--vermell)}
 .config-box{background:var(--surface2);border:1px solid var(--border);
@@ -205,6 +307,8 @@ footer{color:var(--muted);font-size:11px;text-align:center;
   .disease-grid{grid-template-columns:1fr}
   .checkbox-group{flex-direction:column;gap:8px}
   .page-header h1{font-size:18px}
+  .filter-bar{gap:4px}
+  .filter-date{font-size:11px;padding:4px 6px}
 }
 """
 
@@ -212,31 +316,115 @@ footer{color:var(--muted);font-size:11px;text-align:center;
 #  JAVASCRIPT COMÚ
 # ═════════════════════════════════════════════════════════════════════════════
 
+JS_THEME = """
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? '' : 'dark');
+  localStorage.setItem('sn-theme', isDark ? 'light' : 'dark');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+}
+(function(){
+  const saved = localStorage.getItem('sn-theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+})();
+"""
+
 JS_FILTER = """
 const FILTER_SIZES = {'24h':48,'3d':144,'7d':336,'14d':999999};
 let activeFilter = '7d';
+let customStart = null, customEnd = null;
+
+function toggleChartInfo(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('show');
+}
+
 function setFilter(range) {
   activeFilter = range;
+  customStart = null;
+  customEnd = null;
   const n = Math.min(FILTER_SIZES[range], ALL.labels.length);
   const start = Math.max(0, ALL.labels.length - n);
   buildCharts(start);
   document.querySelectorAll('.filter-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.range === range));
 }
+
+function setCustomRange() {
+  const dIni = document.getElementById('filter-date-ini');
+  const dFi  = document.getElementById('filter-date-fi');
+  if (!dIni || !dFi || !dIni.value || !dFi.value) return;
+  
+  const ini = new Date(dIni.value);
+  const fi  = new Date(dFi.value);
+  fi.setHours(23,59,59);
+  
+  let startIdx = -1, endIdx = -1;
+  for (let i = 0; i < ALL.ts_raw.length; i++) {
+    const d = new Date(ALL.ts_raw[i]);
+    if (startIdx === -1 && d >= ini) startIdx = i;
+    if (d <= fi) endIdx = i;
+  }
+  
+  if (startIdx === -1 || endIdx === -1 || startIdx > endIdx) return;
+  
+  customStart = startIdx;
+  customEnd = endIdx + 1;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  buildCharts(startIdx, customEnd);
+}
+
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? '' : 'dark');
+  localStorage.setItem('sn-theme', isDark ? 'light' : 'dark');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+  // Rebuild charts with new theme colors
+  if (typeof rebuildCurrentView === 'function') rebuildCurrentView();
+}
+(function(){
+  const saved = localStorage.getItem('sn-theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+})();
+
+function getChartColors() {
+  const style = getComputedStyle(document.documentElement);
+  return {
+    grid: style.getPropertyValue('--chart-grid').trim() || 'rgba(0,0,0,.06)',
+    tick: style.getPropertyValue('--chart-tick').trim() || '#7a7269'
+  };
+}
 """
 
 JS_CHART_BASE = """
-const cfgBase = {
-  responsive:true, maintainAspectRatio:true,
-  plugins:{legend:{display:false}},
-  scales:{
-    x:{ticks:{color:'#6b7280',maxTicksLimit:8,font:{size:10}},
-       grid:{color:'rgba(255,255,255,.04)'}},
-    y:{ticks:{color:'#6b7280',font:{size:10}},
-       grid:{color:'rgba(255,255,255,.06)'}}
-  }
-};
+function cfgBase() {
+  const cc = getChartColors();
+  return {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:cc.tick,maxTicksLimit:8,font:{size:10}},
+         grid:{color:cc.grid}},
+      y:{ticks:{color:cc.tick,font:{size:10}},
+         grid:{color:cc.grid}}
+    }
+  };
+}
 function createTHChart(L, T, H) {
+  const cc = getChartColors();
   return new Chart(document.getElementById('chart-th'), {
     type:'line',
     data:{labels:L, datasets:[
@@ -247,8 +435,8 @@ function createTHChart(L, T, H) {
        backgroundColor:'rgba(56,189,248,.08)', borderWidth:1.5,
        pointRadius:0, fill:false, tension:.3, yAxisID:'yHR'}
     ]},
-    options:{...cfgBase,
-      plugins:{...cfgBase.plugins,
+    options:{...cfgBase(),
+      plugins:{...cfgBase().plugins,
         legend:{display:true, labels:{color:'#9ca3af',font:{size:11}}},
         annotation:{annotations:{
           hr40:{type:'line',yScaleID:'yHR',yMin:40,yMax:40,
@@ -260,10 +448,10 @@ function createTHChart(L, T, H) {
         }}
       },
       scales:{
-        x:cfgBase.scales.x,
-        yT:{...cfgBase.scales.y, position:'left',
+        x:cfgBase().scales.x,
+        yT:{...cfgBase().scales.y, position:'left',
             title:{display:true,text:'°C',color:'#f97316',font:{size:10}}},
-        yHR:{...cfgBase.scales.y, position:'right', min:0, max:100,
+        yHR:{...cfgBase().scales.y, position:'right', min:0, max:100,
              title:{display:true,text:'%',color:'#38bdf8',font:{size:10}},
              grid:{drawOnChartArea:false}}
       }
@@ -278,14 +466,136 @@ function createPlujaChart(L, P) {
       backgroundColor:'rgba(56,189,248,.5)',
       borderColor:'rgba(56,189,248,.8)', borderWidth:1
     }]},
-    options:{...cfgBase,
-      scales:{x:cfgBase.scales.x,
-        y:{...cfgBase.scales.y, min:0,
+    options:{...cfgBase(),
+      scales:{x:cfgBase().scales.x,
+        y:{...cfgBase().scales.y, min:0,
            title:{display:true,text:'mm',color:'#38bdf8',font:{size:10}}}}
     }
   });
 }
 
+function createRadUVChart(L, Rad, UV) {
+  return new Chart(document.getElementById('chart-raduv'), {
+    type: 'line',
+    data: {
+      labels: L,
+      datasets: [
+        {
+          label: 'Radiació Solar (W/m²)',
+          data: Rad,
+          borderColor: '#eab308',
+          backgroundColor: 'rgba(234,179,8,0.1)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+          yAxisID: 'yRad'
+        },
+        {
+          label: 'Índex UV',
+          data: UV,
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139,92,246,0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+          yAxisID: 'yUV'
+        }
+      ]
+    },
+    options: {
+      ...cfgBase(),
+      plugins: {
+        ...cfgBase().plugins,
+        legend: { display: true, labels: { color: '#9ca3af', font: { size: 11 } } }
+      },
+      scales: {
+        x: cfgBase().scales.x,
+        yRad: { ...cfgBase().scales.y, position: 'left', min: 0, title: { display: true, text: 'W/m²', color: '#eab308', font: { size: 10 } } },
+        yUV: { ...cfgBase().scales.y, position: 'right', min: 0, title: { display: true, text: 'UVI', color: '#8b5cf6', font: { size: 10 } }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+
+function createET0Chart(L, ET0, P, B) {
+  return new Chart(document.getElementById('chart-et0'), {
+    type: 'bar',
+    data: {
+      labels: L,
+      datasets: [
+        {
+          type: 'line',
+          label: 'ET0 (mm)',
+          data: ET0,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.1)',
+          borderWidth: 2,
+          pointRadius: 2,
+          fill: true,
+          tension: 0.3,
+          yAxisID: 'y'
+        },
+        {
+          type: 'bar',
+          label: 'Pluja (mm)',
+          data: P,
+          backgroundColor: '#3b82f6',
+          borderRadius: 2,
+          yAxisID: 'y'
+        }
+      ]
+    },
+    options: {
+      ...cfgBase(),
+      plugins: {
+        ...cfgBase().plugins,
+        legend: { display: true, labels: { color: '#9ca3af', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            afterBody: function(ctx) {
+              const idx = ctx[0].dataIndex;
+              return 'Balanc acum.: ' + B[idx] + ' mm';
+            }
+          }
+        }
+      },
+      scales: {
+        x: cfgBase().scales.x,
+        y: { ...cfgBase().scales.y, min: 0, title: { display: true, text: 'mm', color: '#9ca3af', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function createPhenologyChart(L, GDD, Fred) {
+  const cc = getChartColors();
+  return new Chart(document.getElementById('chart-phenology'), {
+    type:'line',
+    data:{labels:L, datasets:[
+      {label:'Graus-Dia Acum.', data:GDD, borderColor:'#f59e0b',
+       backgroundColor:'rgba(245,158,11,.1)', borderWidth:2,
+       pointRadius:0, fill:true, tension:.3, yAxisID:'yGDD'},
+      {label:'Hores Fred Acum.', data:Fred, borderColor:'#60a5fa',
+       backgroundColor:'rgba(96,165,250,.1)', borderWidth:2,
+       pointRadius:0, fill:true, tension:.3, yAxisID:'yFred'}
+    ]},
+    options:{...cfgBase(),
+      plugins:{...cfgBase().plugins,
+        legend:{display:true, labels:{color:'#9ca3af',font:{size:11}}}
+      },
+      scales:{
+        x:cfgBase().scales.x,
+        yGDD:{...cfgBase().scales.y, position:'left',
+            title:{display:true,text:'°D (Base 10)',color:'#f59e0b',font:{size:10}}},
+        yFred:{...cfgBase().scales.y, position:'right',
+             title:{display:true,text:'h (<7°C)',color:'#60a5fa',font:{size:10}},
+             grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+}
 function getProtectionInfo(t, tsRaw, pluja, temps) {
   let tDate = new Date(t.data);
   let baseDays = t.dies_proteccio || 10;
@@ -408,15 +718,15 @@ function createUIGublerChart(L, uiAcc, uiHora, tsRaw) {
        backgroundColor:'rgba(167,139,250,.25)',
        borderColor:'rgba(167,139,250,.5)', borderWidth:1, yAxisID:'yUH'}
     ]},
-    options:{...cfgBase,
-      plugins:{...cfgBase.plugins,
+    options:{...cfgBase(),
+      plugins:{...cfgBase().plugins,
         legend:{display:true, labels:{color:'#9ca3af',font:{size:11}}},
         annotation:{annotations:anns}
       },
-      scales:{x:cfgBase.scales.x,
-        y:{...cfgBase.scales.y, min:0,
+      scales:{x:cfgBase().scales.x,
+        y:{...cfgBase().scales.y, min:0,
            title:{display:true,text:'UI acum.',color:'#a78bfa',font:{size:10}}},
-        yUH:{...cfgBase.scales.y, position:'right', min:0,
+        yUH:{...cfgBase().scales.y, position:'right', min:0,
              title:{display:true,text:'UI/h',color:'rgba(167,139,250,.6)',font:{size:10}},
              grid:{drawOnChartArea:false}}
       }
@@ -435,9 +745,9 @@ function createRiscMildiuChart(L, riscData) {
       borderColor:colors.map(c=>c.replace(/,\\.8\\)/,',1)').replace(/,\\.4\\)/,',1)')),
       borderWidth:1
     }]},
-    options:{...cfgBase,
-      scales:{x:cfgBase.scales.x,
-        y:{...cfgBase.scales.y, min:0, max:4,
+    options:{...cfgBase(),
+      scales:{x:cfgBase().scales.x,
+        y:{...cfgBase().scales.y, min:0, max:4,
            ticks:{stepSize:1, callback:v=>['Inact.','Vigil.','Prim.','Sec.','Alt'][v]||v,
                   color:'#6b7280',font:{size:10}},
            title:{display:true,text:'Nivell',color:'#9ca3af',font:{size:10}}}}
@@ -847,42 +1157,82 @@ def carregar_dades() -> pd.DataFrame:
 #  COMPONENTS HTML REUTILITZABLES
 # ═════════════════════════════════════════════════════════════════════════════
 
-def generar_head(titol: str, amb_charts: bool = True) -> str:
+def generar_head(titol: str, amb_charts: bool = True, amb_mapa: bool = False) -> str:
     charts_scripts = ""
     if amb_charts:
         charts_scripts = ('\n  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0'
                           '/dist/chart.umd.min.js"></script>'
                           '\n  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin'
                           '-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>')
+    map_scripts = ""
+    if amb_mapa:
+        map_scripts = ('\n  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>'
+                       '\n  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>')
+
     return f"""<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{titol}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">{charts_scripts}
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">{charts_scripts}{map_scripts}
   <style>{CSS}</style>
 </head>"""
 
-
+# Estructura de navegació multi-cultiu
+# Cada element pot ser:
+#   ("id", "href", "label")                          → link simple
+#   ("id", "href", "label", [sublinks...])           → desplegable
 NAV_ITEMS = [
-    ("index",    "index.html",    "Inici"),
-    ("oidi",     "oidi.html",     "Oïdi"),
-    ("mildiu",   "mildiu.html",   "Mildiu"),
-    ("botritis", "botritis.html", "Botritis"),
-    ("blackrot", "blackrot.html", "Black Rot"),
+    ("index", "index.html", "Inici"),
+    ("vinya", "vinya.html", "Vinya", [
+        ("vinya",    "vinya.html",    "Resum"),
+        ("oidi",     "oidi.html",     "Oïdi"),
+        ("mildiu",   "mildiu.html",   "Mildiu"),
+        ("botritis", "botritis.html", "Botritis"),
+        ("blackrot", "blackrot.html", "Black Rot"),
+    ]),
+    ("cirerers",  None, "Cirerers"),
+    ("pistatxo",  None, "Pistatxo"),
 ]
+
+# Tots els IDs que pertanyen al grup "vinya"
+VINYA_GROUP = {"vinya", "oidi", "mildiu", "botritis", "blackrot"}
 
 def generar_navbar(pagina_activa: str) -> str:
     links = []
-    for pid, href, label in NAV_ITEMS:
-        cls = "nav-link active" if pid == pagina_activa else "nav-link"
-        links.append(f'<a href="{href}" class="{cls}">{label}</a>')
+    for item in NAV_ITEMS:
+        pid, href, label = item[0], item[1], item[2]
+        children = item[3] if len(item) > 3 else None
+
+        if children:
+            # Dropdown
+            is_group_active = pagina_activa in {c[0] for c in children}
+            toggle_cls = "nav-dropdown-toggle active" if is_group_active else "nav-dropdown-toggle"
+            sub_links = []
+            for cid, chref, clabel in children:
+                ccls = "active" if cid == pagina_activa else ""
+                sub_links.append(f'<a href="{chref}" class="{ccls}">{clabel}</a>')
+            sub_html = "\n        ".join(sub_links)
+            links.append(f"""<div class="nav-dropdown" onclick="this.classList.toggle('open')">
+      <button class="{toggle_cls}">{label} <span class="chevron">▼</span></button>
+      <div class="nav-dropdown-menu">
+        {sub_html}
+      </div>
+    </div>""")
+        elif href:
+            cls = "nav-link active" if pid == pagina_activa else "nav-link"
+            links.append(f'<a href="{href}" class="{cls}">{label}</a>')
+        else:
+            # Placeholder (sense pàgina encara)
+            links.append(f'<span class="nav-link" style="opacity:.45;cursor:default" title="Properament">{label}</span>')
+
     links_html = "\n    ".join(links)
     return f"""<nav class="navbar">
-  <a href="index.html" class="nav-brand">🍇 Son Nadal</a>
+  <a href="index.html" class="nav-brand">🌿 Son Nadal</a>
   <div class="nav-links">
     {links_html}
+    <button id="theme-btn" class="theme-toggle" onclick="toggleTheme()" title="Canviar tema">🌙</button>
   </div>
 </nav>"""
 
@@ -902,9 +1252,23 @@ def generar_filtre_bar() -> str:
   <button class="filter-btn" data-range="3d" onclick="setFilter('3d')">3 dies</button>
   <button class="filter-btn active" data-range="7d" onclick="setFilter('7d')">7 dies</button>
   <button class="filter-btn" data-range="14d" onclick="setFilter('14d')">14 dies</button>
+  <div class="filter-sep"></div>
+  <input type="date" id="filter-date-ini" class="filter-date" title="Data inici">
+  <span style="color:var(--muted);font-size:12px;">→</span>
+  <input type="date" id="filter-date-fi" class="filter-date" title="Data fi">
+  <button class="filter-apply" onclick="setCustomRange()">Aplicar</button>
 </div>"""
 
-
+def generar_chart_card(canvas_id: str, titol: str, descripcio: str, style: str = "") -> str:
+    """Genera una targeta de gràfic estàndard amb botó d'informació i descripció."""
+    return f"""<div class="chart-card" {style}>
+  <div class="chart-title">
+    <span>{titol}</span>
+    <button class="chart-info-btn" onclick="toggleChartInfo('desc-{canvas_id}')" title="Més informació">i</button>
+  </div>
+  <div id="desc-{canvas_id}" class="chart-desc">{descripcio}</div>
+  <canvas id="{canvas_id}"></canvas>
+</div>"""
 ALL_MALALTIES = [
     ("oidio",    "Oïdi"),
     ("mildiu",   "Mildiu"),
@@ -1079,6 +1443,24 @@ def generar_recomanacio_tractament(malaltia: str, risc: str = None) -> str:
 #  PREPARACIÓ DE DADES PER A GRÀFIQUES
 # ═════════════════════════════════════════════════════════════════════════════
 
+def calc_Ra(day_of_year: int, lat_deg: float) -> float:
+    lat_rad = math.radians(lat_deg)
+    delta = 0.409 * math.sin((2 * math.pi * day_of_year / 365.0) - 1.39)
+    ws = math.acos(-math.tan(lat_rad) * math.tan(delta))
+    dr = 1 + 0.033 * math.cos(2 * math.pi * day_of_year / 365.0)
+    Ra_MJ = (24 * 60 / math.pi) * 0.0820 * dr * (
+        ws * math.sin(lat_rad) * math.sin(delta) +
+        math.cos(lat_rad) * math.cos(delta) * math.sin(ws)
+    )
+    return Ra_MJ / 2.45
+
+def calc_ET0_hargreaves(tmin, tmax, tmean, doy, lat=39.5146):
+    Ra = calc_Ra(doy, lat)
+    tdiff = max(tmax - tmin, 0)
+    et0 = 0.0023 * (tmean + 17.8) * math.sqrt(tdiff) * Ra
+    return max(et0, 0)
+
+
 def preparar_dades_json(df: pd.DataFrame) -> str:
     """Prepara totes les sèries de dades com a JSON per a les gràfiques."""
     labels  = df["ts"].dt.strftime("%d/%m %H:%M").tolist()
@@ -1088,6 +1470,9 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
     pluja   = pd.to_numeric(df["precipitacio_mm"], errors="coerce").round(1).tolist()
     ui_hora = pd.to_numeric(df.get("ui_horaria",    pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
     ui_acc  = pd.to_numeric(df.get("ui_acumulades", pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
+    
+    rad_solar = pd.to_numeric(df.get("radiacio_solar_wm2", pd.Series([None]*len(df))), errors="coerce").round(1).tolist()
+    uv_index  = pd.to_numeric(df.get("index_uv", pd.Series([None]*len(df))), errors="coerce").round(1).tolist()
 
     risc_mildiu_data = pd.to_numeric(
         df.get("risc_mildiu", pd.Series(dtype=str)).map(
@@ -1106,6 +1491,54 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
         except Exception:
             pass
 
+    parceles_data = []
+    if os.path.exists("parceles.json"):
+        import json as j
+        try:
+            with open("parceles.json", "r", encoding="utf-8") as f:
+                p_json = j.load(f)
+                parceles_data = p_json.get("parceles", [])
+        except Exception:
+            pass
+
+    # Daily aggregation for ET0 and Water Balance
+    df_daily = df.copy()
+    df_daily['date'] = df_daily['ts'].dt.date
+    df_daily['doy'] = df_daily['ts'].dt.dayofyear
+    
+    daily_data = {"labels": [], "et0": [], "pluja": [], "balanc": [], "gdd": [], "gdd_acc": [], "fred": [], "fred_acc": []}
+    balanc_acumulat = 0.0
+    gdd_acumulat = 0.0
+    fred_acumulat = 0.0
+    
+    for date, group in df_daily.groupby('date'):
+        tmin = group['temperatura_c'].min()
+        tmax = group['temperatura_c'].max()
+        tmean = group['temperatura_c'].mean()
+        pluja_dia = group['precipitacio_mm'].sum()
+        doy = group['doy'].iloc[0]
+        
+        # ET0 & Balanç
+        et0 = calc_ET0_hargreaves(tmin, tmax, tmean, doy)
+        balanc_acumulat += (pluja_dia - et0)
+        
+        # GDD (Base 10)
+        gdd = max(tmean - 10.0, 0)
+        gdd_acumulat += gdd
+        
+        # Hores de fred (< 7ºC, 30 min per registre)
+        hores_fred_dia = (group['temperatura_c'] < 7.0).sum() * 0.5
+        fred_acumulat += hores_fred_dia
+        
+        daily_data["labels"].append(date.strftime("%d/%m"))
+        daily_data["et0"].append(round(et0, 2))
+        daily_data["pluja"].append(round(pluja_dia, 2))
+        daily_data["balanc"].append(round(balanc_acumulat, 2))
+        daily_data["gdd"].append(round(gdd, 1))
+        daily_data["gdd_acc"].append(round(gdd_acumulat, 1))
+        daily_data["fred"].append(round(hores_fred_dia, 1))
+        daily_data["fred_acc"].append(round(fred_acumulat, 1))
+
     return json.dumps({
         "labels":           labels,
         "ts_raw":           ts_raw,
@@ -1114,32 +1547,53 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
         "pluja":            pluja,
         "ui_hora":          ui_hora,
         "ui_acc":           ui_acc,
+        "rad_solar":        rad_solar,
+        "uv_index":         uv_index,
         "risc_mildiu_data": risc_mildiu_data,
         "tractaments":      tractaments_data,
+        "parceles":         parceles_data,
+        "daily":            daily_data,
     })
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  PÀGINA: INDEX  (hub principal)
+#  PÀGINA: INDEX  (dashboard global de finca)
 # ═════════════════════════════════════════════════════════════════════════════
+
+def calcular_hores_fred(df: pd.DataFrame, llindar: float = 7.0) -> float:
+    """Calcula les hores de fred (T < llindar) a partir de registres cada 30 min."""
+    temps = pd.to_numeric(df["temperatura_c"], errors="coerce")
+    registres_freds = (temps < llindar).sum()
+    # Cada registre = 30 min → dividir per 2 per obtenir hores
+    return registres_freds * 0.5
 
 def generar_index(df: pd.DataFrame) -> str:
     data_json = preparar_dades_json(df)
     ultima = df.iloc[-1]
     ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
 
-    # Risc oïdi
-    risc_oidi = str(ultima.get("risc_gubler", "baix"))
-    color_oidi = {"baix":"#22c55e","moderat":"#f59e0b","alt":"#ef4444","molt alt":"#7c3aed"}.get(risc_oidi, "#6b7280")
+    # KPIs globals
+    t_act  = pd.to_numeric(ultima.get("temperatura_c"), errors="coerce")
+    hr_act = pd.to_numeric(ultima.get("humitat_pct"),   errors="coerce")
+    pluja_total = pd.to_numeric(df["precipitacio_mm"], errors="coerce").sum()
+    hores_fred = calcular_hores_fred(df)
+    t_min = pd.to_numeric(df["temperatura_c"], errors="coerce").min()
+    t_max = pd.to_numeric(df["temperatura_c"], errors="coerce").max()
 
-    # Risc mildiu
+    # Risc oïdi i mildiu (per a la targeta de vinya)
+    risc_oidi = str(ultima.get("risc_gubler", "baix"))
+    color_oidi = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828","molt alt":"#6a1b9a"}.get(risc_oidi, "#7a7269")
     risc_mildiu = str(ultima.get("risc_mildiu", "inactiu"))
-    color_mildiu = {"inactiu":"#6b7280","vigilancia":"#f59e0b","primari":"#f97316",
-                    "secundari":"#ef4444","alt":"#7c3aed"}.get(risc_mildiu, "#6b7280")
+    color_mildiu = {"inactiu":"#7a7269","vigilancia":"#c77d00","primari":"#d45e0a",
+                    "secundari":"#c62828","alt":"#6a1b9a"}.get(risc_mildiu, "#7a7269")
+
+    # Rang de dates
+    data_ini = df["ts"].min().strftime("%d/%m/%Y")
+    data_fi  = df["ts"].max().strftime("%d/%m/%Y")
 
     parts = []
     parts.append("<!DOCTYPE html>\n<html lang=\"ca\">")
-    parts.append(generar_head("Vinya Son Nadal · Felanitx"))
+    parts.append(generar_head("Son Nadal · Finca", amb_mapa=True))
     parts.append("<body>")
     parts.append(generar_navbar("index"))
     parts.append("<main>")
@@ -1148,10 +1602,310 @@ def generar_index(df: pd.DataFrame) -> str:
     parts.append(f"""
 <div class="page-header">
   <div>
-    <h1>Vinya Son Nadal</h1>
-    <div class="sub">Felanitx, Mallorca · Monitoratge fitosanitari · Últims 14 dies</div>
+    <h1>Finca Son Nadal</h1>
+    <div class="sub">Felanitx, Mallorca · Dades del {data_ini} al {data_fi}</div>
   </div>
   <div class="sub" style="text-align:right">{ts_act}</div>
+</div>
+""")
+
+    # KPIs globals
+    parts.append(f"""
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Estació Meteorològica</div>
+    <div class="kpi-val" style="font-size:22px">Son Nadal</div>
+    <div class="kpi-sub">ID: 117202 · Activa</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Temperatura</div>
+    <div class="kpi-val">{t_act:.1f}<span class="kpi-unit">°C</span></div>
+    <div class="kpi-sub">Min {t_min:.1f}° · Max {t_max:.1f}°</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Humitat relativa</div>
+    <div class="kpi-val">{hr_act:.0f}<span class="kpi-unit">%</span></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Precipitació acumulada</div>
+    <div class="kpi-val">{pluja_total:.1f}<span class="kpi-unit">mm</span></div>
+    <div class="kpi-sub">Últims 14 dies</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Hores de fred</div>
+    <div class="kpi-val">{hores_fred:.0f}<span class="kpi-unit">h</span></div>
+    <div class="kpi-sub">T &lt; 7°C · Període disponible</div>
+  </div>
+</div>
+""")
+
+    # Targetes de cultiu
+    parts.append(f"""
+<div class="section-title" style="border-top:none;padding-top:0;margin-top:8px">Cultius</div>
+<div class="crop-grid">
+  <a href="vinya.html" class="crop-card">
+    <span class="crop-icon">🍇</span>
+    <div class="crop-name">Vinya</div>
+    <div class="crop-sub">4 malalties monitorades · Models Gubler + Kast + EPI</div>
+    <div class="crop-stats">
+      <div class="crop-stat">
+        <span><span class="dot" style="background:{color_oidi}"></span>Oïdi</span>
+        <span style="color:{color_oidi};font-weight:600">{risc_oidi.upper()}</span>
+      </div>
+      <div class="crop-stat">
+        <span><span class="dot" style="background:{color_mildiu}"></span>Mildiu</span>
+        <span style="color:{color_mildiu};font-weight:600">{risc_mildiu.upper()}</span>
+      </div>
+      <div class="crop-stat">
+        <span><span class="dot" style="background:#7a7269"></span>Botritis</span>
+        <span style="color:#7a7269">Sense model</span>
+      </div>
+      <div class="crop-stat">
+        <span><span class="dot" style="background:#7a7269"></span>Black Rot</span>
+        <span style="color:#7a7269">Sense model</span>
+      </div>
+    </div>
+    <span class="arrow">→</span>
+  </a>
+  <div class="crop-card" style="cursor:default">
+    <span class="crop-icon">🍒</span>
+    <div class="crop-name">Cirerers</div>
+    <div class="crop-sub">Properament</div>
+    <div class="crop-coming">El monitoratge de cirerers s'activarà quan es configurin les dades del cultiu.</div>
+  </div>
+  <div class="crop-card" style="cursor:default">
+    <span class="crop-icon">🌰</span>
+    <div class="crop-name">Pistatxo</div>
+    <div class="crop-sub">Properament</div>
+    <div class="crop-coming">El monitoratge de pistatxo s'activarà quan es configurin les dades del cultiu.</div>
+  </div>
+</div>
+""")
+
+    # Mapa
+    parts.append('<div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">')
+    parts.append('<span>Mapa de Parcel·les</span>')
+    parts.append('<select id="map-filter" style="padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; outline:none; cursor:pointer;" onchange="filterMap(this.value)">')
+    parts.append('  <option value="all">Tots els cultius</option>')
+    parts.append('  <option value="vinya">🍇 Vinya</option>')
+    parts.append('  <option value="cirerers">🍒 Cirerers</option>')
+    parts.append('  <option value="pistatxo">🌰 Pistatxo</option>')
+    parts.append('</select>')
+    parts.append('</div>')
+    parts.append('<div id="map" style="height: 400px; border-radius: 14px; margin-bottom: 24px; z-index: 1;"></div>')
+
+    # Filtre + gràfiques meteo globals
+    parts.append('<div class="section-title">Dades meteorològiques globals</div>')
+    parts.append(generar_filtre_bar())
+    parts.append('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px">')
+    parts.append(generar_chart_card(
+        "chart-et0", 
+        "Balanç Hídric (ET0 vs Pluja)", 
+        "Aquesta gràfica mostra l'Evapotranspiració de referència (ET0) comparada amb la precipitació diària. Permet avaluar les pèrdues d'aigua per evaporació del sòl i transpiració de les plantes, i saber si l'aportació d'aigua (pluja o reg) és suficient per mantenir el balanç hídric.",
+        'style="margin-bottom:0"'
+    ))
+    parts.append(generar_chart_card(
+        "chart-phenology", 
+        "Evolució Fenològica", 
+        "Mostra l'acumulació de Graus-Dia (integral tèrmica base 10°C) i Hores de Fred (temperatures < 7°C). Aquestes mètriques són essencials per predir les fases de desenvolupament de la vinya i assegurar que arbres com els cirerers i pistatxos han cobert les seves necessitats de fred hivernal.",
+        'style="margin-bottom:0"'
+    ))
+    parts.append('</div>')
+    
+    parts.append(generar_chart_card(
+        "chart-th", 
+        "Temperatura i humitat", 
+        "Evolució horària de la temperatura (°C) i la humitat relativa (%). Les línies discontínues marquen els llindars d'humitat del 40% i 70%, crítics per al desenvolupament de certes malalties fúngiques."
+    ))
+
+    parts.append(generar_chart_card(
+        "chart-raduv", 
+        "Radiació Solar i Índex UV", 
+        "Dades obtingudes via satèl·lit (Open-Meteo). La radiació solar (W/m²) afecta directament a la fotosíntesi i l'evapotranspiració. L'Índex UV ens permet modelar de forma més precisa l'estrès de la planta i el creixement d'alguns patògens (com l'oïdi, que és sensible a l'alta radiació UV)."
+    ))
+
+    parts.append('<div class="section-title">Previsió Meteorològica (7 dies)</div>')
+    parts.append("""
+<div class="chart-card" style="padding:0; overflow:hidden">
+  <iframe width="100%" height="450" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km%2Fh&zoom=10&overlay=wind&product=ecmwf&level=surface&lat=39.5146&lon=3.1540" frameborder="0"></iframe>
+</div>
+""")
+
+    parts.append("</main>")
+    parts.append(generar_footer())
+
+    # Script
+    parts.append("<script>")
+    parts.append(f"const ALL = {data_json};")
+    parts.append(JS_CHART_BASE)
+    parts.append(f"""
+let map;
+let polygons = [];
+
+// Inicialització del Mapa (Leaflet)
+function initMap() {{
+  map = L.map('map').setView([39.5146, 3.15405], 16);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+    attribution: 'Tiles &copy; Esri'
+  }}).addTo(map);
+
+  // Colors segons risc (simplificat, en el futur cada parcel·la tindrà la seva lògica de color completa)
+  const colorVinya = '{color_oidi}'; 
+  const colorGris = '#7a7269';
+
+  if (ALL.parceles && ALL.parceles.length > 0) {{
+    ALL.parceles.forEach(p => {{
+      let color = colorGris;
+      let status = "Properament";
+      if (p.cultiu === "vinya") {{
+        color = colorVinya;
+        status = "Monitoratge Actiu";
+      }}
+      
+      const poly = L.polygon(p.coordenades, {{
+        color: color, 
+        weight: 3, 
+        fillOpacity: 0.4,
+        className: 'parcel-polygon'
+      }});
+      poly.parcelaData = p; // Guardem dades per filtrar
+      
+      const tooltipHTML = `
+        <div style="font-family:Inter,sans-serif; text-align:center">
+          <h4 style="margin:0 0 4px 0; font-size:14px">${{p.nom}}</h4>
+          <span style="font-size:12px; color:#666">${{status}}</span><br>
+          <span style="font-size:12px; color:${{color}}">&#9679; Fes clic per veure detalls</span>
+        </div>
+      `;
+      
+      poly.bindTooltip(tooltipHTML, {{sticky: true, direction: 'top', offset: [0, -10]}});
+      
+      if (p.link && p.link !== "#") {{
+        poly.on('click', () => {{
+          window.location.href = p.link;
+        }});
+        poly.on('mouseover', function () {{
+          this._path.style.cursor = 'pointer';
+        }});
+      }}
+      
+      poly.addTo(map);
+      polygons.push(poly);
+    }});
+  }} else {{
+    // Fallback if parceles.json doesn't exist
+    const vinyaCoords = [[39.5150, 3.1535], [39.5150, 3.1545], [39.5140, 3.1545], [39.5140, 3.1535]];
+    const poly = L.polygon(vinyaCoords, {{color: colorVinya, weight: 3, fillOpacity: 0.4}}).addTo(map).bindPopup("<b>Vinya</b><br>Monitoratge Actiu");
+    polygons.push(poly);
+  }}
+}}
+
+function filterMap(cultiu) {{
+  let bounds = new L.LatLngBounds();
+  let found = false;
+  
+  polygons.forEach(poly => {{
+    if (cultiu === 'all' || (poly.parcelaData && poly.parcelaData.cultiu === cultiu)) {{
+      if (!map.hasLayer(poly)) map.addLayer(poly);
+      bounds.extend(poly.getBounds());
+      found = true;
+    }} else {{
+      if (map.hasLayer(poly)) map.removeLayer(poly);
+    }}
+  }});
+  
+  if (found) {{
+    map.fitBounds(bounds, {{padding: [20, 20]}});
+  }}
+}}
+
+window.addEventListener('load', initMap);
+
+function buildCharts(start, end) {{
+  if (end === undefined) end = ALL.labels.length;
+  const L_th = ALL.labels.slice(start, end);
+  
+  // Determinar rang de dates per filtrar les dades diàries
+  const startDate = ALL.ts_raw[start] ? ALL.ts_raw[start].substring(0, 10) : null;
+  const endDate = ALL.ts_raw[Math.min(end - 1, ALL.ts_raw.length - 1)] ? ALL.ts_raw[Math.min(end - 1, ALL.ts_raw.length - 1)].substring(0, 10) : null;
+  
+  const daily = ALL.daily;
+  let dStart = 0, dEnd = daily.labels.length;
+  
+  if (startDate && endDate) {{
+    // daily.labels format: "dd/mm" — convertim a comparable
+    const sD = new Date(startDate);
+    const eD = new Date(endDate);
+    
+    for (let i = 0; i < daily.labels.length; i++) {{
+      // Reconstruir data del label "dd/mm" amb l'any actual
+      const parts = daily.labels[i].split('/');
+      const d = new Date(sD.getFullYear(), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      if (d < sD) {{ dStart = i + 1; }}
+      if (d <= eD) {{ dEnd = i + 1; }}
+    }}
+  }}
+  
+  const dL = daily.labels.slice(dStart, dEnd);
+  const dET0 = daily.et0.slice(dStart, dEnd);
+  const dP = daily.pluja.slice(dStart, dEnd);
+  const dB = daily.balanc.slice(dStart, dEnd);
+  const dGDD = daily.gdd_acc.slice(dStart, dEnd);
+  const dFred = daily.fred_acc.slice(dStart, dEnd);
+
+  Object.values(window._charts || {{}}).forEach(c => c.destroy());
+  window._charts = {{
+    th: createTHChart(L_th, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
+    et0: createET0Chart(dL, dET0, dP, dB),
+    pheno: createPhenologyChart(dL, dGDD, dFred),
+    raduv: createRadUVChart(L_th, ALL.rad_solar.slice(start, end), ALL.uv_index.slice(start, end))
+  }};
+}}
+function rebuildCurrentView() {{
+  if (customStart !== null && customEnd !== null) {{ buildCharts(customStart, customEnd); }}
+  else {{ setFilter(activeFilter); }}
+}}
+""")
+    parts.append(JS_FILTER)
+    parts.append("setFilter('7d');")
+    parts.append("</script>")
+    parts.append("</body>\n</html>")
+
+    return "\n".join(parts)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PÀGINA: VINYA  (resum del cultiu)
+# ═════════════════════════════════════════════════════════════════════════════
+
+def generar_vinya(df: pd.DataFrame) -> str:
+    data_json = preparar_dades_json(df)
+    ultima = df.iloc[-1]
+    ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
+
+    # Risc oïdi
+    risc_oidi = str(ultima.get("risc_gubler", "baix"))
+    color_oidi = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828","molt alt":"#6a1b9a"}.get(risc_oidi, "#7a7269")
+
+    # Risc mildiu
+    risc_mildiu = str(ultima.get("risc_mildiu", "inactiu"))
+    color_mildiu = {"inactiu":"#7a7269","vigilancia":"#c77d00","primari":"#d45e0a",
+                    "secundari":"#c62828","alt":"#6a1b9a"}.get(risc_mildiu, "#7a7269")
+
+    parts = []
+    parts.append("<!DOCTYPE html>\n<html lang=\"ca\">")
+    parts.append(generar_head("Vinya · Son Nadal"))
+    parts.append("<body>")
+    parts.append(generar_navbar("vinya"))
+    parts.append("<main>")
+
+    # Capçalera
+    parts.append(f"""
+<div class="page-header">
+  <div>
+    <h1>🍇 Vinya</h1>
+    <div class="sub">Monitoratge fitosanitari · Últimes dades: {ts_act}</div>
+  </div>
 </div>
 """)
 
@@ -1183,7 +1937,7 @@ def generar_index(df: pd.DataFrame) -> str:
     <div class="name">Botritis</div>
     <div class="agent">Botrytis cinerea</div>
     <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#6b7280">— SENSE MODEL</span>
+      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#7a7269">— SENSE MODEL</span>
     </div>
     <div class="desc">Podridura gris. Factors: HR alta, pluja a maduració, ferides.</div>
     <span class="arrow">→</span>
@@ -1193,7 +1947,7 @@ def generar_index(df: pd.DataFrame) -> str:
     <div class="name">Black Rot</div>
     <div class="agent">Guignardia bidwellii</div>
     <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#6b7280">— SENSE MODEL</span>
+      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#7a7269">— SENSE MODEL</span>
     </div>
     <div class="desc">Podridura negra. Factors: pluja + T 20-30°C, fulles infectades.</div>
     <span class="arrow">→</span>
@@ -1222,13 +1976,17 @@ def generar_index(df: pd.DataFrame) -> str:
     parts.append(f"const ALL = {data_json};")
     parts.append(JS_CHART_BASE)
     parts.append("""
-function buildCharts(start) {
-  const L = ALL.labels.slice(start);
+function buildCharts(start, end) {
+  const L = ALL.labels.slice(start, end);
   Object.values(window._charts || {}).forEach(c => c.destroy());
   window._charts = {
-    th: createTHChart(L, ALL.temps.slice(start), ALL.humitat.slice(start)),
-    pluja: createPlujaChart(L, ALL.pluja.slice(start))
+    th: createTHChart(L, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
+    pluja: createPlujaChart(L, ALL.pluja.slice(start, end))
   };
+}
+function rebuildCurrentView() {
+  if (customStart !== null && customEnd !== null) { buildCharts(customStart, customEnd); }
+  else { setFilter(activeFilter); }
 }
 """)
     parts.append(JS_FILTER)
@@ -1357,14 +2115,18 @@ def generar_oidi(df: pd.DataFrame) -> str:
     parts.append(f"const ALL = {data_json};")
     parts.append(JS_CHART_BASE)
     parts.append("""
-function buildCharts(start) {
-  const L = ALL.labels.slice(start);
+function buildCharts(start, end) {
+  const L = ALL.labels.slice(start, end);
   Object.values(window._charts || {}).forEach(c => c.destroy());
   window._charts = {
-    th: createTHChart(L, ALL.temps.slice(start), ALL.humitat.slice(start)),
-    ui: createUIGublerChart(L, ALL.ui_acc.slice(start), ALL.ui_hora.slice(start), ALL.ts_raw.slice(start)),
-    pluja: createPlujaChart(L, ALL.pluja.slice(start))
+    th: createTHChart(L, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
+    ui: createUIGublerChart(L, ALL.ui_acc.slice(start, end), ALL.ui_hora.slice(start, end), ALL.ts_raw.slice(start, end)),
+    pluja: createPlujaChart(L, ALL.pluja.slice(start, end))
   };
+}
+function rebuildCurrentView() {
+  if (customStart !== null && customEnd !== null) { buildCharts(customStart, customEnd); }
+  else { setFilter(activeFilter); }
 }
 """)
     parts.append(JS_FILTER)
@@ -1477,14 +2239,18 @@ def generar_mildiu(df: pd.DataFrame) -> str:
     parts.append(f"const ALL = {data_json};")
     parts.append(JS_CHART_BASE)
     parts.append("""
-function buildCharts(start) {
-  const L = ALL.labels.slice(start);
+function buildCharts(start, end) {
+  const L = ALL.labels.slice(start, end);
   Object.values(window._charts || {}).forEach(c => c.destroy());
   window._charts = {
-    th: createTHChart(L, ALL.temps.slice(start), ALL.humitat.slice(start)),
-    mildiu: createRiscMildiuChart(L, ALL.risc_mildiu_data.slice(start)),
-    pluja: createPlujaChart(L, ALL.pluja.slice(start))
+    th: createTHChart(L, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
+    mildiu: createRiscMildiuChart(L, ALL.risc_mildiu_data.slice(start, end)),
+    pluja: createPlujaChart(L, ALL.pluja.slice(start, end))
   };
+}
+function rebuildCurrentView() {
+  if (customStart !== null && customEnd !== null) { buildCharts(customStart, customEnd); }
+  else { setFilter(activeFilter); }
 }
 """)
     parts.append(JS_FILTER)
@@ -1573,6 +2339,7 @@ def generar_botritis() -> str:
 
     # Script (només tractaments, sense gràfiques)
     parts.append("<script>")
+    parts.append(JS_THEME)
     parts.append("const MALALTIA_FILTRE = 'botritis';")
     parts.append(JS_TRACTAMENTS)
     parts.append("</script>")
@@ -1657,6 +2424,7 @@ def generar_blackrot() -> str:
 
     # Script (només tractaments, sense gràfiques)
     parts.append("<script>")
+    parts.append(JS_THEME)
     parts.append("const MALALTIA_FILTRE = 'blackrot';")
     parts.append(JS_TRACTAMENTS)
     parts.append("</script>")
@@ -1693,6 +2461,7 @@ def main():
 
     pages = {
         "index.html":    generar_index(df),
+        "vinya.html":    generar_vinya(df),
         "oidi.html":     generar_oidi(df),
         "mildiu.html":   generar_mildiu(df),
         "botritis.html": generar_botritis(),
