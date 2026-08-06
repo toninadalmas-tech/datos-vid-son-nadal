@@ -665,6 +665,15 @@ def generar_index(df: pd.DataFrame) -> str:
 </div>
 """)
 
+
+    parts.append('<div class="card" style="margin-bottom:24px;">')
+    parts.append('  <div class="card-title">🍇 Estats Fenològics (Predicció GDD i Control)</div>')
+    parts.append('  <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">El sistema calcula automàticament la fase fenològica segons la integral tèrmica (GDD) des de març. Pots forçar l\'estat manualment si l\'observació al camp és diferent.</div>')
+    parts.append('  <div class="kpi-grid" id="feno-grid">')
+    parts.append('    <div style="font-size:13px; color:var(--muted);">Carregant estat des del servidor...</div>')
+    parts.append('  </div>')
+    parts.append('</div>')
+
     # Mapa
     parts.append('<div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">')
     parts.append('<span>Mapa de Parcel·les</span>')
@@ -1016,26 +1025,15 @@ def generar_oidi(df: pd.DataFrame) -> str:
 <div class="card" style="margin-bottom:24px;">
   <div class="card-title">Resistència Ontogènica (Model Kast)</div>
   <label style="margin-top:0">Fase fenològica actual de la vinya:</label>
+  <label style="margin-top:0">Tria la varietat a avaluar per l'Oïdi (les dades s'agafen de la pàgina principal):</label>
   <select id="sel-fase" onchange="canviFase(this.value)" style="margin-bottom:8px">
-    <optgroup label="🤖 Automàtic (Predicció per GDD)">
-        <option value="auto_moscatell">⚙️ Moscatell (Primerenca)</option>
-        <option value="auto_prensal">⚙️ Premsal Blanc</option>
-        <option value="auto_callet">⚙️ Callet</option>
-        <option value="auto_manto_negro">⚙️ Manto Negro</option>
-        <option value="auto_cabernet">⚙️ Cabernet (Tardana)</option>
-    </optgroup>
-    <optgroup label="🖐️ Manual (Forçar Estat)">
-        <option value="1">🌱 Fase 1: Brotació a Pre-floració</option>
-        <option value="2">🌼 Fase 2: Floració i Quallat</option>
-        <option value="3">🍇 Fase 3: Creixement del gra</option>
-        <option value="4">🟢 Fase 4: Tancament del raïm</option>
-        <option value="5">🟣 Fase 5: Envero i Maduració</option>
-    </optgroup>
+        <option value="auto_moscatell">🍇 Moscatell (Primerenca)</option>
+        <option value="auto_prensal">🍇 Premsal Blanc</option>
+        <option value="auto_callet">🍇 Callet</option>
+        <option value="auto_manto_negro">🍇 Manto Negro</option>
+        <option value="auto_cabernet">🍇 Cabernet (Tardana)</option>
   </select>
   <div id="auto-fase-lbl" style="display:none; font-size:13px; font-weight:600; color:#3b82f6; margin-bottom:8px; padding:6px 10px; background:rgba(59,130,246,0.1); border-radius:4px;"></div>
-  <div style="font-size:12px;color:var(--muted);">
-    L'edat del raïm modifica el risc real d'infecció. Pots deixar que el sistema ho calculi automàticament o forçar-ho a mà.
-  </div>
 </div>
 
 <div id="oidi-recom-box" style="margin-bottom:20px;">
@@ -1098,8 +1096,6 @@ def generar_oidi(df: pd.DataFrame) -> str:
 """)
 
     # Condicions i Timeline
-    parts.append(generar_condicions("oidi"))
-    parts.append(generar_timeline("oidi"))
 
     # Tractaments
     parts.append(generar_tractaments_section("oidio"))
@@ -1226,8 +1222,6 @@ def generar_mildiu(df: pd.DataFrame) -> str:
 """)
 
     # Condicions i Timeline
-    parts.append(generar_condicions("mildiu"))
-    parts.append(generar_timeline("mildiu"))
 
     # Tractaments
     parts.append(generar_tractaments_section("mildiu"))
