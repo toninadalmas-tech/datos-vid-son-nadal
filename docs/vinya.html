@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Son Nadal · Finca</title>
+  <title>Vinya · Son Nadal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -299,11 +297,11 @@ footer{color:var(--muted);font-size:11px;text-align:center;
 <nav class="navbar">
   <a href="index.html" class="nav-brand">🌿 Son Nadal</a>
   <div class="nav-links">
-    <a href="index.html" class="nav-link active">Inici</a>
+    <a href="index.html" class="nav-link">Inici</a>
     <div class="nav-dropdown" onclick="this.classList.toggle('open')">
-      <button class="nav-dropdown-toggle">Vinya <span class="chevron">▼</span></button>
+      <button class="nav-dropdown-toggle active">Vinya <span class="chevron">▼</span></button>
       <div class="nav-dropdown-menu">
-        <a href="vinya.html" class="">Resum</a>
+        <a href="vinya.html" class="active">Resum</a>
         <a href="oidi.html" class="">Oïdi</a>
         <a href="mildiu.html" class="">Mildiu</a>
         <a href="botritis.html" class="">Botritis</a>
@@ -319,92 +317,55 @@ footer{color:var(--muted);font-size:11px;text-align:center;
 
 <div class="page-header">
   <div>
-    <h1>Finca Son Nadal</h1>
-    <div class="sub">Felanitx, Mallorca · Dades del 26/06/2026 al 02/07/2026</div>
-  </div>
-  <div class="sub" style="text-align:right">02/07/2026 19:00</div>
-</div>
-
-
-<div class="kpi-grid">
-  <div class="kpi">
-    <div class="kpi-label">Estació Meteorològica</div>
-    <div class="kpi-val" style="font-size:22px">Son Nadal</div>
-    <div class="kpi-sub">ID: 117202 · Activa</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Temperatura</div>
-    <div class="kpi-val">29.3<span class="kpi-unit">°C</span></div>
-    <div class="kpi-sub">Min 17.0° · Max 35.1°</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Humitat relativa</div>
-    <div class="kpi-val">57<span class="kpi-unit">%</span></div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Precipitació acumulada</div>
-    <div class="kpi-val">0.0<span class="kpi-unit">mm</span></div>
-    <div class="kpi-sub">Últims 14 dies</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Hores de fred</div>
-    <div class="kpi-val">0<span class="kpi-unit">h</span></div>
-    <div class="kpi-sub">T &lt; 7°C · Període disponible</div>
+    <h1>🍇 Vinya</h1>
+    <div class="sub">Monitoratge fitosanitari · Últimes dades: 02/07/2026 19:00</div>
   </div>
 </div>
 
 
-<div class="section-title" style="border-top:none;padding-top:0;margin-top:8px">Cultius</div>
-<div class="crop-grid">
-  <a href="vinya.html" class="crop-card">
-    <span class="crop-icon">🍇</span>
-    <div class="crop-name">Vinya</div>
-    <div class="crop-sub">4 malalties monitorades · Models Gubler + Kast + EPI</div>
-    <div class="crop-stats">
-      <div class="crop-stat">
-        <span><span class="dot" style="background:#6a1b9a"></span>Oïdi</span>
-        <span style="color:#6a1b9a;font-weight:600">MOLT ALT</span>
-      </div>
-      <div class="crop-stat">
-        <span><span class="dot" style="background:#7a7269"></span>Mildiu</span>
-        <span style="color:#7a7269;font-weight:600">INACTIU</span>
-      </div>
-      <div class="crop-stat">
-        <span><span class="dot" style="background:#7a7269"></span>Botritis</span>
-        <span style="color:#7a7269">Sense model</span>
-      </div>
-      <div class="crop-stat">
-        <span><span class="dot" style="background:#7a7269"></span>Black Rot</span>
-        <span style="color:#7a7269">Sense model</span>
-      </div>
+<div class="disease-grid">
+  <a href="oidi.html" class="disease-card">
+    <span class="icon">🍂</span>
+    <div class="name">Oïdi</div>
+    <div class="agent">Erysiphe necator</div>
+    <div class="risk-line">
+      <span class="risk-badge" style="background:rgba(106,27,154,.15);color:#6a1b9a">● MOLT ALT</span>
     </div>
+    <div class="desc">Models Gubler + Kast — Risc climàtic ajustat per fase fenològica (resistència ontogènica).</div>
     <span class="arrow">→</span>
   </a>
-  <div class="crop-card" style="cursor:default">
-    <span class="crop-icon">🍒</span>
-    <div class="crop-name">Cirerers</div>
-    <div class="crop-sub">Properament</div>
-    <div class="crop-coming">El monitoratge de cirerers s'activarà quan es configurin les dades del cultiu.</div>
-  </div>
-  <div class="crop-card" style="cursor:default">
-    <span class="crop-icon">🌰</span>
-    <div class="crop-name">Pistatxo</div>
-    <div class="crop-sub">Properament</div>
-    <div class="crop-coming">El monitoratge de pistatxo s'activarà quan es configurin les dades del cultiu.</div>
-  </div>
+  <a href="mildiu.html" class="disease-card">
+    <span class="icon">💧</span>
+    <div class="name">Mildiu</div>
+    <div class="agent">Plasmopara viticola</div>
+    <div class="risk-line">
+      <span class="risk-badge" style="background:rgba(122,114,105,.15);color:#7a7269">● INACTIU</span>
+    </div>
+    <div class="desc">Model EPI + regla 3×10 de Goidanich. Graus-dia d'incubació.</div>
+    <span class="arrow">→</span>
+  </a>
+  <a href="botritis.html" class="disease-card">
+    <span class="icon">🍇</span>
+    <div class="name">Botritis</div>
+    <div class="agent">Botrytis cinerea</div>
+    <div class="risk-line">
+      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#7a7269">— SENSE MODEL</span>
+    </div>
+    <div class="desc">Podridura gris. Factors: HR alta, pluja a maduració, ferides.</div>
+    <span class="arrow">→</span>
+  </a>
+  <a href="blackrot.html" class="disease-card">
+    <span class="icon">⚫</span>
+    <div class="name">Black Rot</div>
+    <div class="agent">Guignardia bidwellii</div>
+    <div class="risk-line">
+      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#7a7269">— SENSE MODEL</span>
+    </div>
+    <div class="desc">Podridura negra. Factors: pluja + T 20-30°C, fulles infectades.</div>
+    <span class="arrow">→</span>
+  </a>
 </div>
 
-<div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-<span>Mapa de Parcel·les</span>
-<select id="map-filter" style="padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; outline:none; cursor:pointer;" onchange="filterMap(this.value)">
-  <option value="all">Tots els cultius</option>
-  <option value="vinya">🍇 Vinya</option>
-  <option value="cirerers">🍒 Cirerers</option>
-  <option value="pistatxo">🌰 Pistatxo</option>
-</select>
-</div>
-<div id="map" style="height: 400px; border-radius: 14px; margin-bottom: 24px; z-index: 1;"></div>
-<div class="section-title">Dades meteorològiques globals</div>
 <div class="filter-bar">
   <button class="filter-btn" data-range="24h" onclick="setFilter('24h')">24h</button>
   <button class="filter-btn" data-range="3d" onclick="setFilter('3d')">3 dies</button>
@@ -416,44 +377,14 @@ footer{color:var(--muted);font-size:11px;text-align:center;
   <input type="date" id="filter-date-fi" class="filter-date" title="Data fi">
   <button class="filter-apply" onclick="setCustomRange()">Aplicar</button>
 </div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px">
-<div class="chart-card" style="margin-bottom:0">
-  <div class="chart-title">
-    <span>Balanç Hídric (ET0 vs Pluja)</span>
-    <button class="chart-info-btn" onclick="toggleChartInfo('desc-chart-et0')" title="Més informació">i</button>
-  </div>
-  <div id="desc-chart-et0" class="chart-desc">Aquesta gràfica mostra l'Evapotranspiració de referència (ET0) comparada amb la precipitació diària. Permet avaluar les pèrdues d'aigua per evaporació del sòl i transpiració de les plantes, i saber si l'aportació d'aigua (pluja o reg) és suficient per mantenir el balanç hídric.</div>
-  <canvas id="chart-et0"></canvas>
-</div>
-<div class="chart-card" style="margin-bottom:0">
-  <div class="chart-title">
-    <span>Evolució Fenològica</span>
-    <button class="chart-info-btn" onclick="toggleChartInfo('desc-chart-phenology')" title="Més informació">i</button>
-  </div>
-  <div id="desc-chart-phenology" class="chart-desc">Mostra l'acumulació de Graus-Dia (integral tèrmica base 10°C) i Hores de Fred (temperatures < 7°C). Aquestes mètriques són essencials per predir les fases de desenvolupament de la vinya i assegurar que arbres com els cirerers i pistatxos han cobert les seves necessitats de fred hivernal.</div>
-  <canvas id="chart-phenology"></canvas>
-</div>
-</div>
-<div class="chart-card" >
-  <div class="chart-title">
-    <span>Temperatura i humitat</span>
-    <button class="chart-info-btn" onclick="toggleChartInfo('desc-chart-th')" title="Més informació">i</button>
-  </div>
-  <div id="desc-chart-th" class="chart-desc">Evolució horària de la temperatura (°C) i la humitat relativa (%). Les línies discontínues marquen els llindars d'humitat del 40% i 70%, crítics per al desenvolupament de certes malalties fúngiques.</div>
+
+<div class="chart-card">
+  <div class="chart-title">Temperatura i humitat</div>
   <canvas id="chart-th"></canvas>
 </div>
-<div class="chart-card" >
-  <div class="chart-title">
-    <span>Radiació Solar i Índex UV</span>
-    <button class="chart-info-btn" onclick="toggleChartInfo('desc-chart-raduv')" title="Més informació">i</button>
-  </div>
-  <div id="desc-chart-raduv" class="chart-desc">Dades obtingudes via satèl·lit (Open-Meteo). La radiació solar (W/m²) afecta directament a la fotosíntesi i l'evapotranspiració. L'Índex UV ens permet modelar de forma més precisa l'estrès de la planta i el creixement d'alguns patògens (com l'oïdi, que és sensible a l'alta radiació UV).</div>
-  <canvas id="chart-raduv"></canvas>
-</div>
-<div class="section-title">Previsió Meteorològica (7 dies)</div>
-
-<div class="chart-card" style="padding:0; overflow:hidden">
-  <iframe width="100%" height="450" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km%2Fh&zoom=10&overlay=wind&product=ecmwf&level=surface&lat=39.5146&lon=3.1540" frameborder="0"></iframe>
+<div class="chart-card">
+  <div class="chart-title">Precipitació (mm)</div>
+  <canvas id="chart-pluja"></canvas>
 </div>
 
 </main>
@@ -811,126 +742,12 @@ function createRiscMildiuChart(L, riscData) {
 }
 
 
-let map;
-let polygons = [];
-
-// Inicialització del Mapa (Leaflet)
-function initMap() {
-  map = L.map('map').setView([39.5146, 3.15405], 16);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri'
-  }).addTo(map);
-
-  // Colors segons risc (simplificat, en el futur cada parcel·la tindrà la seva lògica de color completa)
-  const colorVinya = '#6a1b9a'; 
-  const colorGris = '#7a7269';
-
-  if (ALL.parceles && ALL.parceles.length > 0) {
-    ALL.parceles.forEach(p => {
-      let color = colorGris;
-      let status = "Properament";
-      if (p.cultiu === "vinya") {
-        color = colorVinya;
-        status = "Monitoratge Actiu";
-      }
-      
-      const poly = L.polygon(p.coordenades, {
-        color: color, 
-        weight: 3, 
-        fillOpacity: 0.4,
-        className: 'parcel-polygon'
-      });
-      poly.parcelaData = p; // Guardem dades per filtrar
-      
-      const tooltipHTML = `
-        <div style="font-family:Inter,sans-serif; text-align:center">
-          <h4 style="margin:0 0 4px 0; font-size:14px">${p.nom}</h4>
-          <span style="font-size:12px; color:#666">${status}</span><br>
-          <span style="font-size:12px; color:${color}">&#9679; Fes clic per veure detalls</span>
-        </div>
-      `;
-      
-      poly.bindTooltip(tooltipHTML, {sticky: true, direction: 'top', offset: [0, -10]});
-      
-      if (p.link && p.link !== "#") {
-        poly.on('click', () => {
-          window.location.href = p.link;
-        });
-        poly.on('mouseover', function () {
-          this._path.style.cursor = 'pointer';
-        });
-      }
-      
-      poly.addTo(map);
-      polygons.push(poly);
-    });
-  } else {
-    // Fallback if parceles.json doesn't exist
-    const vinyaCoords = [[39.5150, 3.1535], [39.5150, 3.1545], [39.5140, 3.1545], [39.5140, 3.1535]];
-    const poly = L.polygon(vinyaCoords, {color: colorVinya, weight: 3, fillOpacity: 0.4}).addTo(map).bindPopup("<b>Vinya</b><br>Monitoratge Actiu");
-    polygons.push(poly);
-  }
-}
-
-function filterMap(cultiu) {
-  let bounds = new L.LatLngBounds();
-  let found = false;
-  
-  polygons.forEach(poly => {
-    if (cultiu === 'all' || (poly.parcelaData && poly.parcelaData.cultiu === cultiu)) {
-      if (!map.hasLayer(poly)) map.addLayer(poly);
-      bounds.extend(poly.getBounds());
-      found = true;
-    } else {
-      if (map.hasLayer(poly)) map.removeLayer(poly);
-    }
-  });
-  
-  if (found) {
-    map.fitBounds(bounds, {padding: [20, 20]});
-  }
-}
-
-window.addEventListener('load', initMap);
-
 function buildCharts(start, end) {
-  if (end === undefined) end = ALL.labels.length;
-  const L_th = ALL.labels.slice(start, end);
-  
-  // Determinar rang de dates per filtrar les dades diàries
-  const startDate = ALL.ts_raw[start] ? ALL.ts_raw[start].substring(0, 10) : null;
-  const endDate = ALL.ts_raw[Math.min(end - 1, ALL.ts_raw.length - 1)] ? ALL.ts_raw[Math.min(end - 1, ALL.ts_raw.length - 1)].substring(0, 10) : null;
-  
-  const daily = ALL.daily;
-  let dStart = 0, dEnd = daily.labels.length;
-  
-  if (startDate && endDate) {
-    // daily.labels format: "dd/mm" — convertim a comparable
-    const sD = new Date(startDate);
-    const eD = new Date(endDate);
-    
-    for (let i = 0; i < daily.labels.length; i++) {
-      // Reconstruir data del label "dd/mm" amb l'any actual
-      const parts = daily.labels[i].split('/');
-      const d = new Date(sD.getFullYear(), parseInt(parts[1]) - 1, parseInt(parts[0]));
-      if (d < sD) { dStart = i + 1; }
-      if (d <= eD) { dEnd = i + 1; }
-    }
-  }
-  
-  const dL = daily.labels.slice(dStart, dEnd);
-  const dET0 = daily.et0.slice(dStart, dEnd);
-  const dP = daily.pluja.slice(dStart, dEnd);
-  const dB = daily.balanc.slice(dStart, dEnd);
-  const dGDD = daily.gdd_acc.slice(dStart, dEnd);
-  const dFred = daily.fred_acc.slice(dStart, dEnd);
-
+  const L = ALL.labels.slice(start, end);
   Object.values(window._charts || {}).forEach(c => c.destroy());
   window._charts = {
-    th: createTHChart(L_th, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
-    et0: createET0Chart(dL, dET0, dP, dB),
-    pheno: createPhenologyChart(dL, dGDD, dFred),
-    raduv: createRadUVChart(L_th, ALL.rad_solar.slice(start, end), ALL.uv_index.slice(start, end))
+    th: createTHChart(L, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
+    pluja: createPlujaChart(L, ALL.pluja.slice(start, end))
   };
 }
 function rebuildCurrentView() {
