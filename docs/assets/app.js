@@ -678,10 +678,11 @@ async function llegirFase() {
     if (!r.ok) throw new Error('No trobat');
     const d = await r.json();
     const txt = decodeURIComponent(escape(atob(d.content)));
-    const contingut = JSON.parse(txt);
-    if (contingut.fase !== undefined) {
-       // Migrate old format
-       return { varietats: {}, activa_oidi: contingut.fase || 'auto_moscatell' };
+        let contingut = JSON.parse(txt);
+    if (typeof contingut !== 'object' || contingut === null) {
+       contingut = { varietats: {}, activa_oidi: typeof contingut === 'string' ? contingut : 'auto_moscatell' };
+    } else if (contingut.fase !== undefined) {
+       contingut = { varietats: {}, activa_oidi: contingut.fase || 'auto_moscatell' };
     }
     return contingut;
   } catch(e) {
@@ -895,10 +896,7 @@ function updateKastRisk(faseVal, varietatsOverrides = {}) {
   }
 }
 
-async function canviFase(val) {
-  updateKastRisk(val);
-  await guardarFaseRepo(val);
-}
+
 
 // Init
 document.addEventListener('DOMContentLoaded', async () => {

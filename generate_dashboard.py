@@ -1072,6 +1072,9 @@ def generar_oidi(df: pd.DataFrame) -> str:
 </div>
 """)
 
+    parts.append(generar_condicions("oidi"))
+    parts.append(generar_timeline("oidi"))
+
     # Filtre + gràfiques
     parts.append(generar_filtre_bar())
     parts.append("""
@@ -1094,8 +1097,6 @@ def generar_oidi(df: pd.DataFrame) -> str:
   <canvas id="chart-pluja"></canvas>
 </div>
 """)
-
-    # Condicions i Timeline
 
     # Tractaments
     parts.append(generar_tractaments_section("oidio"))
@@ -1197,6 +1198,9 @@ def generar_mildiu(df: pd.DataFrame) -> str:
 </div>
 """)
 
+    parts.append(generar_condicions("oidi"))
+    parts.append(generar_timeline("oidi"))
+
     # Filtre + gràfiques
     parts.append(generar_filtre_bar())
     parts.append("""
@@ -1220,8 +1224,6 @@ def generar_mildiu(df: pd.DataFrame) -> str:
   <canvas id="chart-pluja"></canvas>
 </div>
 """)
-
-    # Condicions i Timeline
 
     # Tractaments
     parts.append(generar_tractaments_section("mildiu"))
