@@ -5,9 +5,9 @@ Llegeix data/historial.csv i data/mildiu_historial.csv
 i genera les pàgines HTML del dashboard:
   - docs/index.html      (hub principal)
   - docs/oidi.html       (oïdi - model Gubler)
-  - docs/mildiu.html     (mildiu - model EPI)
-  - docs/botritis.html   (botritis - base sense model)
-  - docs/blackrot.html   (black rot - base sense model)
+  - docs/mildiu.html     (mildiu - regla 3-10 + esporulacio mecanistica)
+  - docs/botritis.html   (botritis - model de Broome)
+  - docs/blackrot.html   (black rot - model de Spotts)
 
 S'executa automàticament al final del workflow de GitHub Actions.
 """
@@ -52,8 +52,9 @@ def carregar_dades() -> pd.DataFrame:
 
     if os.path.exists(CSV_MILDIU):
         dm = pd.read_csv(CSV_MILDIU)
-        cols_mildiu = ["timestamp", "pluja_10d_mm", "t_mitjana_10d",
-                       "hores_hr95", "condicio_primaria", "condicio_secundaria",
+        cols_mildiu = ["timestamp", "pluja_48h_mm", "pluja_10d_mm", "t_mitjana_24h",
+                       "t_mitjana_10d", "hores_fulla_molla", "condicio_primaria",
+                       "condicio_secundaria", "cicle_obert", "graus_hora_esporulacio",
                        "graus_dia_inc", "dies_incubacio_est", "risc_mildiu"]
         cols_ok = [c for c in cols_mildiu if c in dm.columns]
         df = pd.merge(df, dm[cols_ok], on="timestamp", how="left")
@@ -85,7 +86,7 @@ def generar_head(titol: str, amb_charts: bool = True, amb_mapa: bool = False) ->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">{charts_scripts}{map_scripts}
   <link rel="stylesheet" href="assets/style.css">
-  <script src="assets/app.js"></script>
+  <script src="assets/app.js" defer></script>
 </head>"""
 
 # Estructura de navegació multi-cultiu
@@ -151,7 +152,7 @@ def generar_footer() -> str:
     return f"""<footer>
   Son Nadal (RC0039468) · 39.5146, 3.15405 ·
   Actualitzat: {ts} ·
-  Oïdi: Gubler (1995) · Mildiu: Model EPI + regla 3×10 (Goidanich)
+  Oïdi: Gubler-Thomas (UC Davis) · Mildiu: regla 3-10 (Baldacci 1947) + esporulació mecanística
 </footer>"""
 
 
@@ -264,6 +265,58 @@ def generar_tractaments_section(malaltia_id: str) -> str:
 
 
 
+def generar_observacions_section(malaltia_id: str) -> str:
+    """
+    Formulari per registrar observacions de camp.
+
+    Té dos usos: obre la porta del cicle secundari quan l'inòcul ve de fora
+    (el model no pot detectar una primària que ha passat a la vinya del veí),
+    i acumula el contrast necessari per calibrar els llindars amb els anys.
+    """
+    return f"""
+<div class="section-title">Observacions de camp</div>
+
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title">Registrar una observació</div>
+  <div style="font-size:12px;color:var(--muted);margin-top:6px">
+    Anota el que veus a la vinya. Si detectes la malaltia, el model obre el cicle
+    secundari encara que no hagi registrat cap infecció primària pròpia.
+  </div>
+  <div style="margin-top:16px">
+    <label>Data de l'observació</label>
+    <input type="date" id="obs-data">
+
+    <label style="margin-top:12px">Òrgan afectat</label>
+    <select id="obs-organ">
+      <option value="fulla">Fulla</option>
+      <option value="raim">Raïm</option>
+      <option value="brot">Brot / sarment</option>
+    </select>
+
+    <label style="margin-top:12px">Incidència estimada</label>
+    <select id="obs-incidencia">
+      <option value="cap">Cap símptoma (control negatiu)</option>
+      <option value="baixa">Baixa — focus aïllats</option>
+      <option value="mitjana">Mitjana — diverses plantes</option>
+      <option value="alta">Alta — generalitzada</option>
+    </select>
+
+    <label style="margin-top:12px">Notes (opcional)</label>
+    <textarea id="obs-notes" placeholder="Zona de la parcel·la, varietat, detalls..."></textarea>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="afegirObservacio('{malaltia_id}')">Guardar observació</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Historial d'observacions</div>
+  <div id="llista-observacions"><div class="empty">Carregant...</div></div>
+</div>
+"""
+
+
 def generar_timeline(malaltia: str) -> str:
     timelines = {
         "oidi": [("MAR", 1), ("ABR", 2), ("MAI", 3), ("JUN", 3), ("JUL", 3), ("AGO", 1), ("SET", 0), ("OCT", 0)],
@@ -306,6 +359,51 @@ def generar_condicions(malaltia: str) -> str:
     
     if malaltia not in conds: return ""
     return f'<div class="card" style="margin-bottom:24px; font-size:14px; line-height:1.6; color:var(--text);">🔬 {conds[malaltia]}</div>'
+
+def generar_estat_cicle(cicle_obert: bool, dies_inc, cond_prim: bool) -> str:
+    """
+    Barra d'estat del cicle epidèmic del mildiu.
+
+    Un risc climàtic alt amb el cicle tancat significa una cosa molt diferent
+    que el mateix risc amb esporangis a la parcel·la: sense infecció primària
+    establerta no hi pot haver infecció secundària.
+    """
+    incubant = cicle_obert is False and dies_inc is not None and not pd.isna(dies_inc)
+
+    if cicle_obert:
+        etapa, nota = 3, "Hi ha lesions que poden esporular: el risc secundari és real."
+    elif incubant:
+        etapa, nota = 2, f"Infecció primària en incubació. Símptomes estimats en {dies_inc:.0f} dies."
+    elif cond_prim:
+        etapa, nota = 1, "S'han donat les condicions de la regla 3-10. Comença la incubació."
+    else:
+        etapa, nota = 0, ("Sense infecció primària registrada. Encara que el clima sigui "
+                          "favorable, no hi ha inòcul propi per generar secundàries.")
+
+    noms = ["Latent", "Primària detectada", "Incubant", "Cicle secundari actiu"]
+    colors = ["#7a7269", "#f59e0b", "#f97316", "#ef4444"]
+
+    passos = []
+    for i, nom in enumerate(noms):
+        actiu = i <= etapa
+        col = colors[etapa] if actiu else "var(--border)"
+        pes = "600" if i == etapa else "400"
+        opac = "1" if actiu else ".45"
+        passos.append(
+            f'<div style="flex:1;text-align:center;opacity:{opac}">'
+            f'<div style="height:6px;border-radius:3px;background:{col};margin-bottom:6px"></div>'
+            f'<span style="font-size:11px;font-weight:{pes};color:var(--text)">{nom}</span></div>'
+        )
+
+    return f"""
+<div class="card" style="margin-bottom:24px">
+  <div class="card-title">Estat del cicle epidèmic</div>
+  <div style="display:flex;gap:8px;margin:14px 0 10px">
+    {''.join(passos)}
+  </div>
+  <div style="font-size:13px;color:var(--muted);line-height:1.5">{nota}</div>
+</div>"""
+
 
 def generar_recomanacio_tractament(malaltia: str, risc: str = None) -> str:
     """Genera la caixa de recomanació de tractament segons la malaltia i el nivell de risc."""
@@ -440,8 +538,11 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
     temps   = pd.to_numeric(df["temperatura_c"],   errors="coerce").round(1).tolist()
     humitat = pd.to_numeric(df["humitat_pct"],     errors="coerce").round(1).tolist()
     pluja   = pd.to_numeric(df["precipitacio_mm"], errors="coerce").round(1).tolist()
-    ui_hora = pd.to_numeric(df.get("ui_horaria",    pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
-    ui_acc  = pd.to_numeric(df.get("ui_acumulades", pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
+    # Índex de Gubler-Thomas (0-100) i hores de ratxa dins la finestra òptima
+    index_gt   = pd.to_numeric(df.get("index_gubler", pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
+    hores_rang = pd.to_numeric(df.get("hores_rang_optim", pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
+    # Mitjana mòbil de 7 dies: base de l'índex d'OiDiag
+    oidiag_meteo = pd.to_numeric(df.get("index_oidiag_meteo", pd.Series([0]*len(df))), errors="coerce").round(1).tolist()
     
     rad_solar = pd.to_numeric(df.get("radiacio_solar_wm2", pd.Series([None]*len(df))), errors="coerce").round(1).tolist()
     uv_index  = pd.to_numeric(df.get("index_uv", pd.Series([None]*len(df))), errors="coerce").round(1).tolist()
@@ -453,8 +554,12 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
     ).tolist() if "risc_mildiu" in df.columns else [0]*len(labels)
 
     risc_botritis_pct = pd.to_numeric(df.get("risc_botritis_pct", pd.Series([0]*len(df))), errors="coerce").fillna(0).round(1).tolist()
-    
+
     risc_blackrot = df.get("risc_blackrot", pd.Series(["baix"]*len(df))).fillna("baix").tolist()
+
+    # Estat del cicle epidèmic del mildiu
+    cicle_obert = pd.to_numeric(df.get("cicle_obert", pd.Series([0]*len(df))), errors="coerce").fillna(0).astype(int).tolist()
+    graus_hora  = pd.to_numeric(df.get("graus_hora_esporulacio", pd.Series([0]*len(df))), errors="coerce").fillna(0).round(1).tolist()
 
     tractaments_data = []
     import os
@@ -468,12 +573,14 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
             pass
 
     parceles_data = []
+    estacio_data = {}
     if os.path.exists("parceles.json"):
         import json as j
         try:
             with open("parceles.json", "r", encoding="utf-8") as f:
                 p_json = j.load(f)
                 parceles_data = p_json.get("parceles", [])
+                estacio_data  = p_json.get("estacio", {})
         except Exception:
             pass
 
@@ -521,13 +628,17 @@ def preparar_dades_json(df: pd.DataFrame) -> str:
         "temps":            temps,
         "humitat":          humitat,
         "pluja":            pluja,
-        "ui_hora":          ui_hora,
-        "ui_acc":           ui_acc,
+        "index_gt":            index_gt,
+        "hores_rang":          hores_rang,
+        "index_oidiag_meteo":  oidiag_meteo,
+        "mildiu_cicle":     cicle_obert,
+        "mildiu_gh":        graus_hora,
         "rad_solar":        rad_solar,
         "uv_index":         uv_index,
         "risc_mildiu_data": risc_mildiu_data,
         "tractaments":      tractaments_data,
         "parceles":         parceles_data,
+        "estacio":          estacio_data,
         "daily":            daily_data,
         "risc_botritis_pct": risc_botritis_pct,
         "risc_blackrot":     risc_blackrot,
@@ -629,7 +740,7 @@ def generar_index(df: pd.DataFrame) -> str:
   <a href="vinya.html" class="crop-card">
     <span class="crop-icon">🍇</span>
     <div class="crop-name">Vinya</div>
-    <div class="crop-sub">4 malalties monitorades · Models Gubler + Kast + EPI</div>
+    <div class="crop-sub">4 malalties monitorades · Gubler-Thomas, OiDiag, regla 3-10, Broome i Spotts</div>
     <div class="crop-stats">
       <div class="crop-stat">
         <span><span class="dot" style="background:{color_oidi}"></span>Oïdi</span>
@@ -684,7 +795,18 @@ def generar_index(df: pd.DataFrame) -> str:
     parts.append('  <option value="pistatxo">🌰 Pistatxo</option>')
     parts.append('</select>')
     parts.append('</div>')
-    parts.append('<div id="map" style="height: 400px; border-radius: 14px; margin-bottom: 24px; z-index: 1;"></div>')
+    parts.append("""
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px">
+  <span style="font-size:12px;color:var(--muted)">Acolorir per:</span>
+  <div class="filter-bar" style="margin:0">
+    <button class="filter-btn active" data-capa="cultiu" onclick="triaCapa(this,'cultiu')">Cultiu</button>
+    <button class="filter-btn" data-capa="raim" onclick="triaCapa(this,'raim')">🍇 Risc raïm</button>
+    <button class="filter-btn" data-capa="fulla" onclick="triaCapa(this,'fulla')">🍃 Risc fulla</button>
+    <button class="filter-btn" data-capa="tractament" onclick="triaCapa(this,'tractament')">Dies des del tractament</button>
+  </div>
+</div>
+<div id="map" style="height: 400px; border-radius: 14px; z-index: 1;"></div>
+<div id="map-llegenda" style="font-size:12px;color:var(--muted);margin:8px 0 24px"></div>""")
 
     # Filtre + gràfiques meteo globals
     parts.append('<div class="section-title">Dades meteorològiques globals</div>')
@@ -730,87 +852,8 @@ def generar_index(df: pd.DataFrame) -> str:
     parts.append("<script>")
     parts.append(f"const ALL = {data_json};")
     parts.append(f"""
-let map;
-let polygons = [];
-
-// Inicialització del Mapa (Leaflet)
-function initMap() {{
-  map = L.map('map').setView([39.5146, 3.15405], 16);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-    attribution: 'Tiles &copy; Esri'
-  }}).addTo(map);
-
-  // Colors segons risc (simplificat, en el futur cada parcel·la tindrà la seva lògica de color completa)
-  const colorVinya = '{color_oidi}'; 
-  const colorGris = '#7a7269';
-
-  if (ALL.parceles && ALL.parceles.length > 0) {{
-    ALL.parceles.forEach(p => {{
-      let color = colorGris;
-      let status = "Properament";
-      if (p.cultiu === "vinya") {{
-        color = colorVinya;
-        status = "Monitoratge Actiu";
-      }}
-      
-      const poly = L.polygon(p.coordenades, {{
-        color: color, 
-        weight: 3, 
-        fillOpacity: 0.4,
-        className: 'parcel-polygon'
-      }});
-      poly.parcelaData = p; // Guardem dades per filtrar
-      
-      const tooltipHTML = `
-        <div style="font-family:Inter,sans-serif; text-align:center">
-          <h4 style="margin:0 0 4px 0; font-size:14px">${{p.nom}}</h4>
-          <span style="font-size:12px; color:#666">${{status}}</span><br>
-          <span style="font-size:12px; color:${{color}}">&#9679; Fes clic per veure detalls</span>
-        </div>
-      `;
-      
-      poly.bindTooltip(tooltipHTML, {{sticky: true, direction: 'top', offset: [0, -10]}});
-      
-      if (p.link && p.link !== "#") {{
-        poly.on('click', () => {{
-          window.location.href = p.link;
-        }});
-        poly.on('mouseover', function () {{
-          this._path.style.cursor = 'pointer';
-        }});
-      }}
-      
-      poly.addTo(map);
-      polygons.push(poly);
-    }});
-  }} else {{
-    // Fallback if parceles.json doesn't exist
-    const vinyaCoords = [[39.5150, 3.1535], [39.5150, 3.1545], [39.5140, 3.1545], [39.5140, 3.1535]];
-    const poly = L.polygon(vinyaCoords, {{color: colorVinya, weight: 3, fillOpacity: 0.4}}).addTo(map).bindPopup("<b>Vinya</b><br>Monitoratge Actiu");
-    polygons.push(poly);
-  }}
-}}
-
-function filterMap(cultiu) {{
-  let bounds = new L.LatLngBounds();
-  let found = false;
-  
-  polygons.forEach(poly => {{
-    if (cultiu === 'all' || (poly.parcelaData && poly.parcelaData.cultiu === cultiu)) {{
-      if (!map.hasLayer(poly)) map.addLayer(poly);
-      bounds.extend(poly.getBounds());
-      found = true;
-    }} else {{
-      if (map.hasLayer(poly)) map.removeLayer(poly);
-    }}
-  }});
-  
-  if (found) {{
-    map.fitBounds(bounds, {{padding: [20, 20]}});
-  }}
-}}
-
-window.addEventListener('load', initMap);
+// El mapa viu a assets/app.js (initMap, filterMap, setCapaMapa)
+// initMap s'invoca des d'app.js quan el DOM esta llest
 
 function buildCharts(start, end) {{
   if (end === undefined) end = ALL.labels.length;
@@ -857,7 +900,7 @@ function rebuildCurrentView() {{
   else {{ setFilter(activeFilter); }}
 }}
 """)
-    parts.append("setFilter('7d');")
+    parts.append("document.addEventListener('DOMContentLoaded', () => setFilter('7d'));")
     parts.append("</script>")
     parts.append("</body>\n</html>")
 
@@ -913,7 +956,7 @@ def generar_vinya(df: pd.DataFrame) -> str:
     <div class="risk-line">
       <span class="risk-badge" style="background:rgba({_hex_to_rgb(color_oidi)},.15);color:{color_oidi}">● {risc_oidi.upper()}</span>
     </div>
-    <div class="desc">Models Gubler + Kast — Risc climàtic ajustat per fase fenològica (resistència ontogènica).</div>
+    <div class="desc">Índex Gubler-Thomas (UC Davis). Risc separat per raïm i per fulla.</div>
     <span class="arrow">→</span>
   </a>
   <a href="mildiu.html" class="disease-card">
@@ -923,7 +966,7 @@ def generar_vinya(df: pd.DataFrame) -> str:
     <div class="risk-line">
       <span class="risk-badge" style="background:rgba({_hex_to_rgb(color_mildiu)},.15);color:{color_mildiu}">● {risc_mildiu.upper()}</span>
     </div>
-    <div class="desc">Model EPI + regla 3×10 de Goidanich. Graus-dia d'incubació.</div>
+    <div class="desc">Regla 3-10 + esporulació mecanística. Porta primària → secundària.</div>
     <span class="arrow">→</span>
   </a>
   <a href="botritis.html" class="disease-card">
@@ -931,9 +974,9 @@ def generar_vinya(df: pd.DataFrame) -> str:
     <div class="name">Botritis</div>
     <div class="agent">Botrytis cinerea</div>
     <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#7a7269">— SENSE MODEL</span>
+      <span class="risk-badge" style="background:rgba({_hex_to_rgb(color_botritis)},.15);color:{color_botritis}">● {risc_botritis.upper()}</span>
     </div>
-    <div class="desc">Podridura gris. Factors: HR alta, pluja a maduració, ferides.</div>
+    <div class="desc">Model de Broome (1995) sobre durada d'humectació i temperatura.</div>
     <span class="arrow">→</span>
   </a>
   <a href="blackrot.html" class="disease-card">
@@ -941,9 +984,9 @@ def generar_vinya(df: pd.DataFrame) -> str:
     <div class="name">Black Rot</div>
     <div class="agent">Guignardia bidwellii</div>
     <div class="risk-line">
-      <span class="risk-badge" style="background:rgba(107,114,128,.15);color:#7a7269">— SENSE MODEL</span>
+      <span class="risk-badge" style="background:rgba({_hex_to_rgb(color_blackrot)},.15);color:{color_blackrot}">● {risc_blackrot.upper()}</span>
     </div>
-    <div class="desc">Podridura negra. Factors: pluja + T 20-30°C, fulles infectades.</div>
+    <div class="desc">Model de Spotts (1977): hores de fulla molla segons temperatura.</div>
     <span class="arrow">→</span>
   </a>
 </div>
@@ -982,7 +1025,7 @@ function rebuildCurrentView() {
   else { setFilter(activeFilter); }
 }
 """)
-    parts.append("setFilter('7d');")
+    parts.append("document.addEventListener('DOMContentLoaded', () => setFilter('7d'));")
     parts.append("</script>")
     parts.append("</body>\n</html>")
 
@@ -999,11 +1042,12 @@ def generar_oidi(df: pd.DataFrame) -> str:
 
     t_act  = pd.to_numeric(ultima.get("temperatura_c"), errors="coerce")
     hr_act = pd.to_numeric(ultima.get("humitat_pct"),   errors="coerce")
-    ui_act = pd.to_numeric(ultima.get("ui_acumulades"), errors="coerce")
+    idx_act = pd.to_numeric(ultima.get("index_gubler"), errors="coerce")
+    hores_rang = pd.to_numeric(ultima.get("hores_rang_optim"), errors="coerce")
     risc   = str(ultima.get("risc_gubler", "baix"))
     ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
-    risc_color = {"baix":"#22c55e","moderat":"#f59e0b","alt":"#ef4444","molt alt":"#7c3aed"}.get(risc, "#6b7280")
-    ui_pct = min(100, (ui_act / 150) * 100) if not pd.isna(ui_act) else 0
+    risc_color = {"baix":"#22c55e","moderat":"#f59e0b","alt":"#ef4444"}.get(risc, "#6b7280")
+    idx_pct = min(100, idx_act) if not pd.isna(idx_act) else 0
 
     parts = []
     parts.append("<!DOCTYPE html>\n<html lang=\"ca\">")
@@ -1017,15 +1061,14 @@ def generar_oidi(df: pd.DataFrame) -> str:
 <div class="page-header">
   <div>
     <h1>Oïdi</h1>
-    <div class="sub">Erysiphe necator · Model Gubler (1995) + Kast (OiDiag) · {ts_act}</div>
+    <div class="sub">Erysiphe necator · Índex Gubler-Thomas (UC Davis) + resistència ontogènica (Gadoury 2003) · {ts_act}</div>
   </div>
   <span class="badge" style="color:{risc_color};border-color:{risc_color}">Clima: {risc.upper()}</span>
 </div>
 
 <div class="card" style="margin-bottom:24px;">
-  <div class="card-title">Resistència Ontogènica (Model Kast)</div>
-  <label style="margin-top:0">Fase fenològica actual de la vinya:</label>
-  <label style="margin-top:0">Tria la varietat a avaluar per l'Oïdi (les dades s'agafen de la pàgina principal):</label>
+  <div class="card-title">Resistència Ontogènica del raïm</div>
+  <label style="margin-top:0">Tria la varietat a avaluar per l'Oïdi (la fase es calcula amb els GDD de la pàgina principal):</label>
   <select id="sel-fase" onchange="canviFase(this.value)" style="margin-bottom:8px">
         <option value="auto_moscatell">🍇 Moscatell (Primerenca)</option>
         <option value="auto_prensal">🍇 Premsal Blanc</option>
@@ -1036,39 +1079,52 @@ def generar_oidi(df: pd.DataFrame) -> str:
   <div id="auto-fase-lbl" style="display:none; font-size:13px; font-weight:600; color:#3b82f6; margin-bottom:8px; padding:6px 10px; background:rgba(59,130,246,0.1); border-radius:4px;"></div>
 </div>
 
+<div id="oidiag-box"></div>
+
 <div id="oidi-recom-box" style="margin-bottom:20px;">
-  <div class="recom-box"><div class="empty" style="padding:0">Carregant avaluació Kast...</div></div>
+  <div class="recom-box"><div class="empty" style="padding:0">Carregant avaluació...</div></div>
 </div>
 """)
 
     # KPIs
     parts.append(f"""
 <div class="kpi-grid">
-  <div class="kpi">
-    <div class="kpi-label">Risc Kast (Raïm)</div>
+  <div class="kpi" id="kpi-raim" style="border-left:3px solid var(--border)">
+    <div class="kpi-label">🍇 Risc RAÏM</div>
     <div class="kpi-val" id="kast-val" style="font-size:18px;">--</div>
-    <div class="kpi-sub" id="kast-ui">-- UI (Ajustat)</div>
+    <div class="kpi-sub" id="kast-ui">Ajustat per fase fenològica</div>
   </div>
-  <div class="kpi">
-    <div class="kpi-label">Risc Gubler (Clima)</div>
+  <div class="kpi" style="border-left:3px solid {risc_color}">
+    <div class="kpi-label">🍃 Risc FULLA</div>
     <div class="kpi-val" style="font-size:18px;color:{risc_color}">{risc.upper()}</div>
-    <div class="kpi-sub">Llindar alt: 100 UI</div>
+    <div class="kpi-sub">Índex {idx_act:.0f}/100 · sense resistència ontogènica</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Temperatura</div>
-    <div class="kpi-val">{t_act:.1f}<span class="kpi-unit">°C</span></div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Humitat relativa</div>
-    <div class="kpi-val">{hr_act:.0f}<span class="kpi-unit">%</span></div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">UI acumulades</div>
-    <div class="kpi-val">{ui_act:.0f}<span class="kpi-unit">UI</span></div>
+    <div class="kpi-label">Índex Gubler-Thomas</div>
+    <div class="kpi-val">{idx_act:.0f}<span class="kpi-unit">/100</span></div>
     <div class="ui-bar-outer">
-      <div class="ui-bar-inner" style="width:{ui_pct:.0f}%;background:{risc_color}"></div>
+      <div class="ui-bar-inner" style="width:{idx_pct:.0f}%;background:{risc_color}"></div>
     </div>
+    <div class="kpi-sub">Moderat &gt;30 · Alt &gt;60</div>
   </div>
+  <div class="kpi">
+    <div class="kpi-label">Ratxa en finestra òptima</div>
+    <div class="kpi-val">{hores_rang:.1f}<span class="kpi-unit">h</span></div>
+    <div class="kpi-sub">21,1-29,4 °C · cal ≥6 h per sumar</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Temperatura / Humitat</div>
+    <div class="kpi-val">{t_act:.1f}<span class="kpi-unit">°C</span></div>
+    <div class="kpi-sub">HR {hr_act:.0f}% · no entra al model</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:24px;font-size:13px;line-height:1.6;color:var(--muted)">
+  <b style="color:var(--text)">Per què dos indicadors?</b> La resistència ontogènica protegeix el
+  <b>raïm</b>: a partir de baies de 3-4 mm el gra és pràcticament immune a noves infeccions.
+  Les <b>fulles</b> joves, en canvi, són susceptibles tota la campanya, i és on es formen els
+  cleistotecis que hivernen a l'escorça i engeguen l'epidèmia de l'any vinent. Un risc de raïm
+  baix amb risc de fulla alt vol dir que no cal protegir el fruit, però sí vigilar la vegetació.
 </div>
 """)
 
@@ -1083,13 +1139,12 @@ def generar_oidi(df: pd.DataFrame) -> str:
   <canvas id="chart-th"></canvas>
 </div>
 <div class="chart-card">
-  <div class="chart-title">UI acumulades (model Gubler)</div>
+  <div class="chart-title">Índex de risc Gubler-Thomas (0-100)</div>
   <canvas id="chart-ui"></canvas>
   <div class="llindars">
-    <span class="ll" style="color:#22c55e;border-color:#22c55e">Baix &lt;50</span>
-    <span class="ll" style="color:#f59e0b;border-color:#f59e0b">Moderat ≥50</span>
-    <span class="ll" style="color:#ef4444;border-color:#ef4444">Alt ≥100</span>
-    <span class="ll" style="color:#7c3aed;border-color:#7c3aed">Molt alt ≥150</span>
+    <span class="ll" style="color:#22c55e;border-color:#22c55e">Baix ≤30</span>
+    <span class="ll" style="color:#f59e0b;border-color:#f59e0b">Moderat 30-60</span>
+    <span class="ll" style="color:#ef4444;border-color:#ef4444">Alt &gt;60</span>
   </div>
 </div>
 <div class="chart-card">
@@ -1100,6 +1155,7 @@ def generar_oidi(df: pd.DataFrame) -> str:
 
     # Tractaments
     parts.append(generar_tractaments_section("oidio"))
+    parts.append(generar_observacions_section("oidio"))
 
     parts.append("</main>")
     parts.append(generar_footer())
@@ -1113,7 +1169,7 @@ function buildCharts(start, end) {
   Object.values(window._charts || {}).forEach(c => c.destroy());
   window._charts = {
     th: createTHChart(L, ALL.temps.slice(start, end), ALL.humitat.slice(start, end)),
-    ui: createUIGublerChart(L, ALL.ui_acc.slice(start, end), ALL.ui_hora.slice(start, end), ALL.ts_raw.slice(start, end)),
+    ui: createUIGublerChart(L, ALL.index_gt.slice(start, end), ALL.hores_rang.slice(start, end), ALL.ts_raw.slice(start, end)),
     pluja: createPlujaChart(L, ALL.pluja.slice(start, end))
   };
 }
@@ -1123,7 +1179,7 @@ function rebuildCurrentView() {
 }
 """)
     parts.append("const MALALTIA_FILTRE = 'oidio';")
-    parts.append("setFilter('7d');")
+    parts.append("document.addEventListener('DOMContentLoaded', () => setFilter('7d'));")
     parts.append("</script>")
     parts.append("</body>\n</html>")
 
@@ -1144,7 +1200,11 @@ def generar_mildiu(df: pd.DataFrame) -> str:
     risc_blackrot = str(ultima.get("risc_blackrot", "baix"))
     color_blackrot = {"baix":"#2e7d32","moderat":"#c77d00","alt":"#c62828"}.get(risc_blackrot, "#7a7269")
     pluja_10d   = pd.to_numeric(ultima.get("pluja_10d_mm"), errors="coerce")
+    pluja_48h   = pd.to_numeric(ultima.get("pluja_48h_mm"), errors="coerce")
+    graus_hora  = pd.to_numeric(ultima.get("graus_hora_esporulacio"), errors="coerce")
     dies_inc    = pd.to_numeric(ultima.get("dies_incubacio_est"), errors="coerce")
+    cicle_obert = bool(pd.to_numeric(ultima.get("cicle_obert", 0), errors="coerce") == 1)
+    cond_prim   = bool(pd.to_numeric(ultima.get("condicio_primaria", 0), errors="coerce") == 1)
     ts_act      = ultima["ts"].strftime("%d/%m/%Y %H:%M")
     t_act       = pd.to_numeric(ultima.get("temperatura_c"), errors="coerce")
     hr_act      = pd.to_numeric(ultima.get("humitat_pct"),   errors="coerce")
@@ -1152,7 +1212,9 @@ def generar_mildiu(df: pd.DataFrame) -> str:
     risc_color = {"inactiu":"#6b7280","vigilancia":"#f59e0b","primari":"#f97316",
                   "secundari":"#ef4444","alt":"#7c3aed"}.get(risc_mildiu, "#6b7280")
     dies_str = f"{dies_inc:.0f}d" if not pd.isna(dies_inc) else "—"
-    pluja_10d_val = f"{pluja_10d:.1f}" if not pd.isna(pluja_10d) else "0.0"
+    pluja_10d_val   = f"{pluja_10d:.1f}" if not pd.isna(pluja_10d) else "0.0"
+    pluja_48h_val   = f"{pluja_48h:.1f}" if not pd.isna(pluja_48h) else "0.0"
+    graus_hora_val  = f"{graus_hora:.0f}" if not pd.isna(graus_hora) else "0"
 
     parts = []
     parts.append("<!DOCTYPE html>\n<html lang=\"ca\">")
@@ -1166,12 +1228,13 @@ def generar_mildiu(df: pd.DataFrame) -> str:
 <div class="page-header">
   <div>
     <h1>Mildiu</h1>
-    <div class="sub">Plasmopara viticola · Model EPI + regla 3×10 · {ts_act}</div>
+    <div class="sub">Plasmopara viticola · Regla 3-10 (Baldacci 1947) + esporulació mecanística · {ts_act}</div>
   </div>
   <span class="badge" style="color:{risc_color};border-color:{risc_color}">● {risc_mildiu.upper()}</span>
 </div>
 """)
 
+    parts.append(generar_estat_cicle(cicle_obert, dies_inc, cond_prim))
     parts.append(generar_recomanacio_tractament("mildiu", risc_mildiu))
 
     # KPIs
@@ -1180,11 +1243,17 @@ def generar_mildiu(df: pd.DataFrame) -> str:
   <div class="kpi">
     <div class="kpi-label">Risc mildiu</div>
     <div class="kpi-val" style="font-size:18px;color:{risc_color}">{risc_mildiu.upper()}</div>
+    <div class="kpi-sub">{'Cicle obert' if cicle_obert else 'Cicle tancat'}</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Pluja acumulada 10d</div>
-    <div class="kpi-val">{pluja_10d_val}<span class="kpi-unit">mm</span></div>
-    <div class="kpi-sub">Llindar: 10 mm</div>
+    <div class="kpi-label">Pluja en 48 h</div>
+    <div class="kpi-val">{pluja_48h_val}<span class="kpi-unit">mm</span></div>
+    <div class="kpi-sub">Regla 3-10: cal ≥10 mm</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Esporulació</div>
+    <div class="kpi-val">{graus_hora_val}<span class="kpi-unit">°C·h</span></div>
+    <div class="kpi-sub">Cal 50 °C·h de nit i amb fulla molla</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Dies fins a símptomes</div>
@@ -1198,8 +1267,8 @@ def generar_mildiu(df: pd.DataFrame) -> str:
 </div>
 """)
 
-    parts.append(generar_condicions("oidi"))
-    parts.append(generar_timeline("oidi"))
+    parts.append(generar_condicions("mildiu"))
+    parts.append(generar_timeline("mildiu"))
 
     # Filtre + gràfiques
     parts.append(generar_filtre_bar())
@@ -1227,6 +1296,7 @@ def generar_mildiu(df: pd.DataFrame) -> str:
 
     # Tractaments
     parts.append(generar_tractaments_section("mildiu"))
+    parts.append(generar_observacions_section("mildiu"))
 
     parts.append("</main>")
     parts.append(generar_footer())
@@ -1250,7 +1320,7 @@ function rebuildCurrentView() {
 }
 """)
     parts.append("const MALALTIA_FILTRE = 'mildiu';")
-    parts.append("setFilter('7d');")
+    parts.append("document.addEventListener('DOMContentLoaded', () => setFilter('7d'));")
     parts.append("</script>")
     parts.append("</body>\n</html>")
 
@@ -1295,6 +1365,7 @@ def generar_botritis(df: pd.DataFrame) -> str:
     parts.append(generar_timeline("botritis"))
     parts.append(generar_recomanacio_tractament("botritis"))
     parts.append(generar_tractaments_section("botritis"))
+    parts.append(generar_observacions_section("botritis"))
     parts.append("</main>")
     parts.append(generar_footer())
     parts.append("<script>")
@@ -1333,7 +1404,7 @@ function buildCharts(start, end) {
   });
 }
 """)
-    parts.append("if (typeof setFilter !== 'undefined') { setFilter('7d'); }")
+    parts.append("document.addEventListener('DOMContentLoaded', () => { if (typeof setFilter !== 'undefined') setFilter('7d'); });")
     parts.append("</script>")
     parts.append("</body>\n</html>")
     return "\n".join(parts)
@@ -1372,6 +1443,7 @@ def generar_blackrot(df: pd.DataFrame) -> str:
     parts.append(generar_timeline("blackrot"))
     parts.append(generar_recomanacio_tractament("blackrot"))
     parts.append(generar_tractaments_section("blackrot"))
+    parts.append(generar_observacions_section("blackrot"))
     parts.append("</main>")
     parts.append(generar_footer())
     parts.append("<script>")
@@ -1414,7 +1486,7 @@ function buildCharts(start, end) {
   });
 }
 """)
-    parts.append("if (typeof setFilter !== 'undefined') { setFilter('7d'); }")
+    parts.append("document.addEventListener('DOMContentLoaded', () => { if (typeof setFilter !== 'undefined') setFilter('7d'); });")
     parts.append("</script>")
     parts.append("</body>\n</html>")
     return "\n".join(parts)

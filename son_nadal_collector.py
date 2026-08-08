@@ -21,27 +21,6 @@ import urllib3
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-def carregar_tractaments():
-    try:
-        with open("tractaments.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data.get("tractaments", [])
-    except Exception:
-        return []
-
-def obtenir_periodes_proteccio(tractaments, malaltia="oidio", dies_proteccio=10):
-    periodes = []
-    for t in tractaments:
-        if malaltia in t.get("malalties", []):
-            try:
-                # La data sol venir com "YYYY-MM-DDTHH:MM"
-                inici = pd.to_datetime(t["data"])
-                fi = inici + timedelta(days=dies_proteccio)
-                periodes.append((inici, fi))
-            except Exception:
-                pass
-    return periodes
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── Configuració ──────────────────────────────────────────────────────────────
@@ -126,6 +105,22 @@ def descarregar_sensor(nom: str, sensor: str) -> pd.DataFrame | None:
     df = pd.DataFrame(files)
     print(f"  [OK] {nom}: {len(df)} mesures")
     return df
+
+
+def ordenar_cronologicament(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ordena per data real, no pel text del timestamp.
+
+    El format "dd/mm/YYYY HH:MM" ordenat com a text agrupa pel dia
+    ("01/07" < "01/08" < "02/07"), i els models que iteren registre a
+    registre (fulla molla, UI acumulades, graus-dia) donarien resultats
+    incorrectes.
+    """
+    ordre = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
+    return (df.assign(_ordre=ordre)
+              .sort_values("_ordre")
+              .drop(columns=["_ordre"])
+              .reset_index(drop=True))
 
 
 # ── Construcció del DataFrame combinat ───────────────────────────────────────

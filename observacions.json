@@ -1,0 +1,4 @@
+{
+  "observacions": [],
+  "_instruccions": "Observacions de camp. Cada registre: data (YYYY-MM-DD), malaltia (oidio|mildiu|botritis|blackrot), organ (fulla|raim|brot), incidencia (cap|baixa|mitjana|alta) i notes. Detectar una malaltia obre el cicle secundari del model encara que no s'hagi registrat cap infeccio primaria propia: l'inocul pot venir de vinyes veines. Els registres amb incidencia 'cap' no obren res, pero serveixen com a control negatiu per calibrar els llindars amb els anys."
+}

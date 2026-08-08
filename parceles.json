@@ -4,6 +4,7 @@
       "id": "vinya_principal",
       "nom": "Vinya Principal",
       "cultiu": "vinya",
+      "varietat": "auto_callet",
       "link": "vinya.html",
       "coordenades": [
         [39.5150, 3.1535],
@@ -36,5 +37,10 @@
         [39.5151, 3.1540]
       ]
     }
-  ]
+  ],
+  "estacio": {
+    "nom": "Son Nadal (CAIB 117202)",
+    "coordenades": [39.5146, 3.15405]
+  },
+  "_instruccions": "Cada parcel·la de vinya pot portar 'varietat' (auto_moscatell, auto_prensal, auto_callet, auto_manto_negro, auto_cabernet). El mapa la fa servir per calcular la fase fenològica i el risc propis de la parcel·la; sense aquest camp s'aplica la varietat per defecte."
 }

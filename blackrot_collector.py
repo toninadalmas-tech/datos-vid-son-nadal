@@ -3,6 +3,8 @@ import numpy as np
 import os
 from datetime import datetime
 
+import meteo_utils as mu
+
 CSV_HISTORIAL = "data/historial.csv"
 
 def model_spotts(lwd: float, t_mitj: float) -> str:
@@ -24,25 +26,33 @@ def model_spotts(lwd: float, t_mitj: float) -> str:
     return "baix"
 
 def calcular_blackrot(df: pd.DataFrame) -> pd.DataFrame:
-    """Analitza els períodes d'humectació i aplica el model de Spotts."""
+    """
+    Analitza els períodes d'humectació i aplica el model de Spotts.
+
+    La durada de la humectació es mesura en hores reals: un forat de dades
+    tanca l'episodi, perquè no sabem si la fulla va seguir molla.
+    """
+    df    = mu.ordenar_per_ts(df)
+    dur   = mu.durades(df["ts"])
     fulla = pd.to_numeric(df.get("fulla_molla", 0), errors="coerce")
     temps = pd.to_numeric(df["temperatura_c"], errors="coerce")
-    
+
     risc_arr = ["baix"] * len(df)
-    
-    lwd_h = 0.0
-    t_sum = 0.0
+    lwd_h, t_pond = 0.0, 0.0
+
     for i in range(len(df)):
-        if fulla.iloc[i] == 1:
-            lwd_h += 0.5
-            t_sum += temps.iloc[i] if pd.notna(temps.iloc[i]) else 0.0
-            t_mitj = t_sum / (lwd_h / 0.5)
+        h = dur.iloc[i]
+        if fulla.iloc[i] == 1 and pd.notna(h):
+            lwd_h  += float(h)
+            t_pond += (float(temps.iloc[i]) if pd.notna(temps.iloc[i]) else 0.0) * float(h)
+            t_mitj  = t_pond / lwd_h if lwd_h > 0 else 0.0
             risc_arr[i] = model_spotts(lwd_h, t_mitj)
         else:
-            lwd_h = 0.0
-            t_sum = 0.0
-            risc_arr[i] = "baix" # Blackrot requereix fulla molla per infectar, assecat atura.
+            # Sense aigua lliure el black rot no pot infectar: l'episodi s'atura.
+            lwd_h, t_pond = 0.0, 0.0
+            risc_arr[i] = "baix"
 
+    df = df.drop(columns=["ts"])
     df["risc_blackrot"] = risc_arr
     return df
 

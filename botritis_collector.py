@@ -3,7 +3,14 @@ import numpy as np
 import os
 from datetime import datetime
 
+import meteo_utils as mu
+
 CSV_HISTORIAL = "data/historial.csv"
+
+# Decaïment del risc quan la fulla s'asseca, per hora real.
+# El model de Broome descriu un episodi d'humectació complet; el decaïment
+# posterior no forma part del model original i és una aproximació nostra.
+DECAIMENT_PER_HORA = 0.90
 
 def model_broome(lwd: float, t_mitj: float) -> float:
     """Model empíric de Broome (1995) per Botritis."""
@@ -14,27 +21,36 @@ def model_broome(lwd: float, t_mitj: float) -> float:
     return (np.exp(W) / (1 + np.exp(W))) * 100.0
 
 def calcular_botritis(df: pd.DataFrame) -> pd.DataFrame:
-    """Analitza els períodes d'humectació i aplica el model de Broome."""
+    """
+    Analitza els períodes d'humectació i aplica el model de Broome.
+
+    La durada de la humectació es mesura en hores reals: si hi ha un forat
+    de dades, l'episodi es talla, perquè no podem afirmar que la fulla
+    hagi seguit molla durant el buit.
+    """
+    df    = mu.ordenar_per_ts(df)
+    dur   = mu.durades(df["ts"])
     fulla = pd.to_numeric(df.get("fulla_molla", 0), errors="coerce")
     temps = pd.to_numeric(df["temperatura_c"], errors="coerce")
-    
+
     risc_arr = np.zeros(len(df))
-    
-    lwd_h = 0.0
-    t_sum = 0.0
+    lwd_h, t_pond = 0.0, 0.0
+
     for i in range(len(df)):
-        if fulla.iloc[i] == 1:
-            lwd_h += 0.5
-            t_sum += temps.iloc[i] if pd.notna(temps.iloc[i]) else 0.0
-            t_mitj = t_sum / (lwd_h / 0.5)
+        h = dur.iloc[i]
+        if fulla.iloc[i] == 1 and pd.notna(h):
+            lwd_h  += float(h)
+            t_pond += (float(temps.iloc[i]) if pd.notna(temps.iloc[i]) else 0.0) * float(h)
+            t_mitj  = t_pond / lwd_h if lwd_h > 0 else 0.0
             risc_arr[i] = model_broome(lwd_h, t_mitj)
         else:
-            # S'asseca, mantenim el risc del darrer període d'humectació fins 24h o decreixem?
-            # Botritis pot incubar-se. Mantindrem el darrer pic de risc alt o baixem ràpid.
-            lwd_h = 0.0
-            t_sum = 0.0
-            risc_arr[i] = risc_arr[i-1] * 0.95 if i > 0 else 0.0
+            # La fulla s'asseca (o hi ha un forat): l'episodi es tanca i el
+            # risc decau de forma proporcional al temps transcorregut.
+            lwd_h, t_pond = 0.0, 0.0
+            hores = float(h) if pd.notna(h) else 0.5
+            risc_arr[i] = risc_arr[i-1] * (DECAIMENT_PER_HORA ** hores) if i > 0 else 0.0
 
+    df = df.drop(columns=["ts"])
     df["risc_botritis_pct"] = np.round(risc_arr, 1)
     
     def eval_risc(x):
