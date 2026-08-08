@@ -22,7 +22,84 @@ from datetime import datetime
 # ── Configuració ─────────────────────────────────────────────────────────────
 CSV_HISTORIAL = "data/historial.csv"
 CSV_MILDIU    = "data/mildiu_historial.csv"
+CSV_PREVISIO  = "data/previsio.csv"
 OUTPUT_DIR    = "docs"
+
+
+def carregar_previsio() -> list:
+    """Previsió dels pròxims dies, si previsio.py s'ha executat."""
+    if not os.path.exists(CSV_PREVISIO):
+        return []
+    try:
+        p = pd.read_csv(CSV_PREVISIO)
+        return p.where(pd.notna(p), None).to_dict("records")
+    except Exception:
+        return []
+
+
+def generar_previsio_card(previsio: list) -> str:
+    """
+    Targeta amb el risc previst als pròxims dies.
+
+    És el dato accionable: un tractament preventiu s'aplica abans de la
+    infecció, no després, així que el que decideix és cap on va el risc.
+    """
+    if not previsio:
+        return ""
+
+    colors = {"baix": "#22c55e", "moderat": "#f59e0b", "alt": "#ef4444"}
+    celles = []
+    for d in previsio:
+        risc = str(d.get("risc_gubler") or "baix")
+        col  = colors.get(risc, "#6b7280")
+        idx  = d.get("index_gubler")
+        idx_txt = f"{idx:.0f}" if isinstance(idx, (int, float)) else "—"
+        try:
+            # strftime("%a") depèn del locale del sistema, que a l'Action és
+            # anglès: posem els noms en català a mà.
+            dia = datetime.strptime(str(d.get("dia")), "%Y-%m-%d")
+            dies_set = ["dl", "dt", "dc", "dj", "dv", "ds", "dg"]
+            avui = datetime.now().date()
+            if dia.date() == avui:
+                etiqueta = "Avui"
+            elif (dia.date() - avui).days == 1:
+                etiqueta = "Demà"
+            else:
+                etiqueta = f"{dies_set[dia.weekday()]} {dia:%d/%m}"
+        except (ValueError, TypeError):
+            etiqueta = str(d.get("dia"))
+
+        pluja = d.get("pluja_dia_mm") or 0
+        pluja_txt = f'<div style="font-size:11px;color:#38bdf8">💧 {pluja:.1f} mm</div>' if pluja else ""
+        tmin, tmax = d.get("t_min"), d.get("t_max")
+        temp_txt = (f'<div style="font-size:11px;color:var(--muted)">{tmin:.0f}-{tmax:.0f}°C</div>'
+                    if isinstance(tmin, (int, float)) and isinstance(tmax, (int, float)) else "")
+
+        celles.append(f"""
+    <div style="flex:1;min-width:96px;text-align:center;padding:10px 6px;
+                border-radius:10px;background:rgba(107,114,128,.06);
+                border-top:3px solid {col}">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">{etiqueta}</div>
+      <div style="font-size:22px;font-weight:700;color:{col}">{idx_txt}</div>
+      <div style="font-size:10px;color:{col};font-weight:600;text-transform:uppercase">{risc}</div>
+      {temp_txt}{pluja_txt}
+    </div>""")
+
+    return f"""
+<div class="card" style="margin-bottom:24px">
+  <div class="card-title">Risc previst · pròxims dies</div>
+  <div style="font-size:12px;color:var(--muted);margin-top:6px">
+    Índex de Gubler-Thomas projectat sobre la previsió d'Open-Meteo, continuant
+    des del valor d'avui. Els tractaments preventius s'apliquen abans de la
+    infecció: el que decideix és cap on va el risc, no on era ahir.
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">{''.join(celles)}
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:10px">
+    La fiabilitat de la previsió baixa amb els dies: els dos primers són
+    força sòlids, l'últim és orientatiu.
+  </div>
+</div>"""
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  CSS COMÚ
@@ -657,7 +734,7 @@ def calcular_hores_fred(df: pd.DataFrame, llindar: float = 7.0) -> float:
     # Cada registre = 30 min → dividir per 2 per obtenir hores
     return registres_freds * 0.5
 
-def generar_index(df: pd.DataFrame) -> str:
+def generar_index(df: pd.DataFrame, previsio: list = None) -> str:
     data_json = preparar_dades_json(df)
     ultima = df.iloc[-1]
     ts_act = ultima["ts"].strftime("%d/%m/%Y %H:%M")
@@ -787,7 +864,7 @@ def generar_index(df: pd.DataFrame) -> str:
 
     # Mapa
     parts.append('<div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">')
-    parts.append('<span>Mapa de Parcel·les</span>')
+    parts.append('<span>Mapa de Parcelles</span>')
     parts.append('<select id="map-filter" style="padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; outline:none; cursor:pointer;" onchange="filterMap(this.value)">')
     parts.append('  <option value="all">Tots els cultius</option>')
     parts.append('  <option value="vinya">🍇 Vinya</option>')
@@ -838,7 +915,8 @@ def generar_index(df: pd.DataFrame) -> str:
         "Dades obtingudes via satèl·lit (Open-Meteo). La radiació solar (W/m²) afecta directament a la fotosíntesi i l'evapotranspiració. L'Índex UV ens permet modelar de forma més precisa l'estrès de la planta i el creixement d'alguns patògens (com l'oïdi, que és sensible a l'alta radiació UV)."
     ))
 
-    parts.append('<div class="section-title">Previsió Meteorològica (7 dies)</div>')
+    parts.append('<div class="section-title">Previsió</div>')
+    parts.append(generar_previsio_card(previsio or []))
     parts.append("""
 <div class="chart-card" style="padding:0; overflow:hidden">
   <iframe width="100%" height="450" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km%2Fh&zoom=10&overlay=wind&product=ecmwf&level=surface&lat=39.5146&lon=3.1540" frameborder="0"></iframe>
@@ -1036,7 +1114,7 @@ function rebuildCurrentView() {
 #  PÀGINA: OÏDI
 # ═════════════════════════════════════════════════════════════════════════════
 
-def generar_oidi(df: pd.DataFrame) -> str:
+def generar_oidi(df: pd.DataFrame, previsio: list = None) -> str:
     data_json = preparar_dades_json(df)
     ultima = df.iloc[-1]
 
@@ -1128,6 +1206,7 @@ def generar_oidi(df: pd.DataFrame) -> str:
 </div>
 """)
 
+    parts.append(generar_previsio_card(previsio or []))
     parts.append(generar_condicions("oidi"))
     parts.append(generar_timeline("oidi"))
 
@@ -1501,15 +1580,16 @@ def _hex_to_rgb(hex_col: str) -> tuple:
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     df = carregar_dades()
+    previsio = carregar_previsio()
 
     with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(generar_index(df))
+        f.write(generar_index(df, previsio))
 
     with open(os.path.join(OUTPUT_DIR, "vinya.html"), "w", encoding="utf-8") as f:
         f.write(generar_vinya(df))
 
     with open(os.path.join(OUTPUT_DIR, "oidi.html"), "w", encoding="utf-8") as f:
-        f.write(generar_oidi(df))
+        f.write(generar_oidi(df, previsio))
 
     with open(os.path.join(OUTPUT_DIR, "mildiu.html"), "w", encoding="utf-8") as f:
         f.write(generar_mildiu(df))

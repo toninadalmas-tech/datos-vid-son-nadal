@@ -16,13 +16,15 @@ El sistema consta de 4 etapes automatitzades mitjançant GitHub Actions, orquest
 ├── mildiu_collector.py           ← (4) Regla 3-10 + esporulació secundària
 ├── botritis_collector.py         ← (5) Model de Broome
 ├── blackrot_collector.py         ← (6) Model de Spotts
-├── generate_dashboard.py         ← (7) Generació del Dashboard HTML (estàtic)
+├── previsio.py                   ← (7) Projecció del risc als pròxims 5 dies
+├── generate_dashboard.py         ← (8) Generació del Dashboard HTML (estàtic)
 ├── meteo_utils.py                ← Durades reals i ratxes (compartit pels models)
 ├── .github/workflows/
 │   └── recollida_diaria.yml      ← Automatització GitHub Actions
 ├── data/
 │   ├── historial.csv             ← Historial climàtic i models d'oïdi/botritis/black rot
-│   └── mildiu_historial.csv      ← Dades ampliades del model de mildiu
+│   ├── mildiu_historial.csv      ← Dades ampliades del model de mildiu
+│   └── previsio.csv              ← Risc projectat sobre la previsió d'Open-Meteo
 ├── tractaments.json              ← Tractaments aplicats (editable des del dashboard)
 ├── observacions.json             ← Observacions de camp (obren el cicle secundari)
 ├── fase_fenologica.json          ← Fase per varietat, amb overrides manuals

@@ -4,6 +4,7 @@ import oidi_collector
 import mildiu_collector
 import botritis_collector
 import blackrot_collector
+import previsio
 import generate_dashboard
 
 def main():
@@ -46,7 +47,13 @@ def main():
     except Exception as e:
         print(f"Error en blackrot_collector: {e}")
     
-    print("\n--- 7. Generant Dashboard ---")
+    print("\n--- 7. Projectant el risc als pròxims dies ---")
+    try:
+        previsio.main()
+    except Exception as e:
+        print(f"Error en previsio: {e}")
+
+    print("\n--- 8. Generant Dashboard ---")
     try:
         generate_dashboard.main()
     except Exception as e:

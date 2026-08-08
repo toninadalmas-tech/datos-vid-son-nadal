@@ -121,7 +121,7 @@
   </div>
 </div>
 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-<span>Mapa de Parcel·les</span>
+<span>Mapa de Parcelles</span>
 <select id="map-filter" style="padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; outline:none; cursor:pointer;" onchange="filterMap(this.value)">
   <option value="all">Tots els cultius</option>
   <option value="vinya">🍇 Vinya</option>
@@ -187,7 +187,62 @@
   <div id="desc-chart-raduv" class="chart-desc">Dades obtingudes via satèl·lit (Open-Meteo). La radiació solar (W/m²) afecta directament a la fotosíntesi i l'evapotranspiració. L'Índex UV ens permet modelar de forma més precisa l'estrès de la planta i el creixement d'alguns patògens (com l'oïdi, que és sensible a l'alta radiació UV).</div>
   <canvas id="chart-raduv"></canvas>
 </div>
-<div class="section-title">Previsió Meteorològica (7 dies)</div>
+<div class="section-title">Previsió</div>
+
+<div class="card" style="margin-bottom:24px">
+  <div class="card-title">Risc previst · pròxims dies</div>
+  <div style="font-size:12px;color:var(--muted);margin-top:6px">
+    Índex de Gubler-Thomas projectat sobre la previsió d'Open-Meteo, continuant
+    des del valor d'avui. Els tractaments preventius s'apliquen abans de la
+    infecció: el que decideix és cap on va el risc, no on era ahir.
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+    <div style="flex:1;min-width:96px;text-align:center;padding:10px 6px;
+                border-radius:10px;background:rgba(107,114,128,.06);
+                border-top:3px solid #ef4444">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Avui</div>
+      <div style="font-size:22px;font-weight:700;color:#ef4444">90</div>
+      <div style="font-size:10px;color:#ef4444;font-weight:600;text-transform:uppercase">alt</div>
+      <div style="font-size:11px;color:var(--muted)">26-31°C</div>
+    </div>
+    <div style="flex:1;min-width:96px;text-align:center;padding:10px 6px;
+                border-radius:10px;background:rgba(107,114,128,.06);
+                border-top:3px solid #ef4444">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Demà</div>
+      <div style="font-size:22px;font-weight:700;color:#ef4444">100</div>
+      <div style="font-size:10px;color:#ef4444;font-weight:600;text-transform:uppercase">alt</div>
+      <div style="font-size:11px;color:var(--muted)">24-34°C</div>
+    </div>
+    <div style="flex:1;min-width:96px;text-align:center;padding:10px 6px;
+                border-radius:10px;background:rgba(107,114,128,.06);
+                border-top:3px solid #ef4444">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">dl 10/08</div>
+      <div style="font-size:22px;font-weight:700;color:#ef4444">100</div>
+      <div style="font-size:10px;color:#ef4444;font-weight:600;text-transform:uppercase">alt</div>
+      <div style="font-size:11px;color:var(--muted)">24-33°C</div>
+    </div>
+    <div style="flex:1;min-width:96px;text-align:center;padding:10px 6px;
+                border-radius:10px;background:rgba(107,114,128,.06);
+                border-top:3px solid #ef4444">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">dt 11/08</div>
+      <div style="font-size:22px;font-weight:700;color:#ef4444">100</div>
+      <div style="font-size:10px;color:#ef4444;font-weight:600;text-transform:uppercase">alt</div>
+      <div style="font-size:11px;color:var(--muted)">25-33°C</div>
+    </div>
+    <div style="flex:1;min-width:96px;text-align:center;padding:10px 6px;
+                border-radius:10px;background:rgba(107,114,128,.06);
+                border-top:3px solid #ef4444">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">dc 12/08</div>
+      <div style="font-size:22px;font-weight:700;color:#ef4444">100</div>
+      <div style="font-size:10px;color:#ef4444;font-weight:600;text-transform:uppercase">alt</div>
+      <div style="font-size:11px;color:var(--muted)">25-34°C</div>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:10px">
+    La fiabilitat de la previsió baixa amb els dies: els dos primers són
+    força sòlids, l'últim és orientatiu.
+  </div>
+</div>
 
 <div class="chart-card" style="padding:0; overflow:hidden">
   <iframe width="100%" height="450" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km%2Fh&zoom=10&overlay=wind&product=ecmwf&level=surface&lat=39.5146&lon=3.1540" frameborder="0"></iframe>
@@ -196,7 +251,7 @@
 </main>
 <footer>
   Son Nadal (RC0039468) · 39.5146, 3.15405 ·
-  Actualitzat: 08/08/2026 18:51 ·
+  Actualitzat: 08/08/2026 19:06 ·
   Oïdi: Gubler-Thomas (UC Davis) · Mildiu: regla 3-10 (Baldacci 1947) + esporulació mecanística
 </footer>
 <script>
